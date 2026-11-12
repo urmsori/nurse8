@@ -1,0 +1,85 @@
+const {JSDOM}=require('jsdom');const fs=require('fs');
+const html=fs.readFileSync(__dirname+'/../index.html','utf8');
+const calls={set:[],sample:[],spoke:[],del:[]};
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+const errors=[];
+const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://x.test/',beforeParse(w){
+  w.scrollTo=()=>{};
+  w.addEventListener('error',e=>errors.push(e.message));
+  const sample=async(input,opts)=>{calls.sample.push(input);
+    if(typeof input==='string'){return {text:'여기 있습니다 '+JSON.stringify([{unit:'동기부여',q:'새 문제 1?',opts:['a','b','c','d'],ans:2,exp:'해설'},{unit:'x',q:'bad',opts:['a'],ans:1},{unit:'동기부여',q:'새 문제 2?',opts:['a','b','c','d'],ans:'4',exp:'해설'}])};}
+    opts&&opts.onText&&opts.onText({text:'부분',delta:'부분'});return {text:'강사의 답입니다.'};};
+  const store={};
+  w.claude={use:async n=>({sample,
+    tts:{speak:async t=>{calls.spoke.push(t)},stop(){},onState(){}},
+    dictation:null,user:{id:async()=>'u_1'},
+    db:(()=>{const doc=p=>({get:async()=>({exists:!!store[p],data:()=>store[p]}),set:async d=>{store[p]=d;calls.set.push(p)},delete:async()=>{delete store[p];calls.del.push(p)},collection:c=>col(p+'/'+c)});
+      const col=p=>{const q={doc:id=>doc(p+'/'+id),orderBy:()=>q,limit:()=>q,get:async()=>({docs:Object.keys(store).filter(k=>k.startsWith(p+'/')).map(k=>({id:k.split('/').pop(),exists:true,data:()=>store[k]}))})};return q};
+      return {doc,collection:col}})()
+  })[n]||null};
+}});
+const w=dom.window,d=w.document;await wait(50);
+const $=s=>d.querySelector(s),$$=s=>[...d.querySelectorAll(s)];
+const click=el=>{if(!el)throw new Error('missing element');el.dispatchEvent(new w.MouseEvent('click',{bubbles:true}));};
+const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)process.exitCode=1;};
+const day=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
+const B=w.BANK,st=()=>w.__app.state(),q0=id=>B.find(x=>x.id===id)||st().custom.find(x=>x.id===id);
+ok($('.big').textContent==='10문제','home shows 10-question set');
+ok($('#navDue').hidden,'no due badge');
+click($('[data-act="today"]'));
+let s=w.__app.sess();ok(s&&s.ids.length===10&&new Set(s.ids).size===10,'today session 10 unique');
+ok($('[data-act="grade"]').disabled&&/답을 고르세요/.test($('[data-act="grade"]').textContent),'grade disabled before pick');
+let q=q0(s.ids[0]);const firstId=q.id;
+click($$('[data-act="pick"]')[(q.ans+1)%4]);ok($('.opt.sel'),'selected state');
+click($('[data-act="grade"]'));
+let p=st().prog[q.id];ok(p.stage===0&&p.due===day(1)&&p.wrong===1,'wrong -> stage0 due tomorrow');
+ok($('.foot.bad')&&$('.foot mark')&&$('.opt.right')&&$('.opt.wrong')&&!$('[data-act="conf"]'),'wrong feedback bar, no confidence chips');
+ok(st().days[day(0)]===1,'day activity counted');
+ok($$('[data-act="ask"]').length===3,'AI chips shown');
+click($('[data-act="similar"]'));await wait(30);
+ok(st().custom.length===2&&w.__app.sess().ids.length===12,'similar adds 2 valid of 3');
+click($('[data-act="ask"][data-p="easy"]'));await wait(30);
+ok($$('.msg.u').length===1&&/강사의 답/.test($$('.msg.a').pop().textContent),'tutor answered');
+const sent=calls.sample[calls.sample.length-1];ok(Array.isArray(sent)&&/정답: /.test(sent[0].content)&&/학생이 고른 답/.test(sent[0].content),'context sent');
+ok(calls.spoke.length===1,'tts spoke');
+$('#chatIn').value='질문';$('form[data-form="chat"]').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await wait(30);
+ok($$('.msg.u').length===2&&calls.sample[calls.sample.length-1].length===3,'typed message, history alternates');
+w.location.hash='quiz';await wait(30);
+click($('[data-act="next"]'));s=w.__app.sess();q=q0(s.ids[1]);ok(q&&q.ai,'similar question next');
+click($$('[data-act="pick"]')[q.ans]);click($('[data-act="grade"]'));
+ok($('.foot.good')&&$$('[data-act="conf"]').length===2&&st().prog[q.id].stage===-1,'correct: good bar + chips, not in ladder');
+click($('[data-act="conf"][data-c="guess"]'));p=st().prog[q.id];ok(p.stage===0&&p.last==='guess'&&p.seen===1,'guess -> tomorrow, seen once');
+click($('[data-act="conf"][data-c="unsure"]'));p=st().prog[q.id];ok(p.stage===1&&p.due===day(3)&&p.seen===1,'unsure -> 3 days');
+click($('[data-act="conf"][data-c="unsure"]'));p=st().prog[q.id];ok(p.stage===-1&&p.seen===1,'toggle off -> sure');
+click($('[data-act="conf"][data-c="unsure"]'));
+ok(w.__app.sess().right===1&&st().days[day(0)]===2,'counts not doubled');
+st().prog[firstId].due=day(0);
+click($('[data-act="next"]'));click($('[data-act="quit"]'));ok($('#quitDlg').hasAttribute('open'),'quit asks first');
+click($('[data-act="quitYes"]'));ok(!w.__app.sess()&&$('h1').textContent==='오늘','back home');
+ok(!$('#navDue').hidden&&$('#navDue').textContent==='1','due badge 1');
+ok(/한 세트 더/.test($('[data-act="today"]').textContent)&&$$('.week .done svg').length===1,'home: more set + week mark');
+w.location.hash='review';await wait(30);
+ok($$('.ladder b').map(x=>x.textContent).join(',')==='1,1,0,0,0','ladder '+$$('.ladder b').map(x=>x.textContent).join(','));
+click($('[data-act="review"]'));s=w.__app.sess();ok(s.ids.length===1&&s.ids[0]===firstId,'review session');
+q=q0(firstId);click($$('[data-act="pick"]')[q.ans]);click($('[data-act="grade"]'));
+p=st().prog[firstId];ok(p.stage===1&&p.due===day(3),'review correct -> stage1 +3d');
+click($('[data-act="conf"][data-c="unsure"]'));p=st().prog[firstId];ok(p.stage===0&&p.due===day(1),'review unsure -> stays, +1d');
+click($('[data-act="next"]'));ok(/모두 맞혔습니다/.test($('h1').textContent)&&$('.score'),'done screen');
+click($('[data-act="tab"][data-v="home"]'));w.location.hash='quiz';await wait(30);
+ok($('#addBox')&&$('[data-act="gen"]')&&$$('.rows [data-act="subj"]').length===5,'picker');
+await wait(1700);ok(calls.set.includes('data/users/u_1/state')&&calls.set.includes('data/users/u_1/log')&&calls.set.some(x=>x.startsWith('data/users/u_1/state/chats/c')),'db saved state, log, chat');
+const L=w.__app.log();ok(L.length===3&&L[0][3]===0&&L[1][4]==='u'&&L[2][3]===1,'log has 3 attempts with result and confidence '+JSON.stringify(L.map(e=>e.slice(2))));
+ok(w.__app.chats().length===1&&w.__app.chats()[0].msgs.length===4&&w.__app.chats()[0].title==='더 쉽게 설명해 주세요','chat saved with title');
+ok(JSON.parse(w.localStorage.getItem('nurse8-chats-v1')).length===1&&JSON.parse(w.localStorage.getItem('nurse8-log-v1')).length===3,'local copies');
+w.location.hash='records';await wait(30);
+ok($('h1').textContent==='기록'&&$$('[data-act="peek"]').length===3&&$$('[data-act="openChat"]').length===1&&$$('.dayh').length===1,'records view');
+click($$('[data-act="peek"]')[2]);ok(w.__app.sess().peek&&$('.opt.wrong')&&$('[data-act="retry"]')&&!$('[data-act="grade"]'),'peek shows old answer');
+click($('[data-act="quit"]'));ok(!w.__app.sess()&&$('h1').textContent==='기록','back to records');
+click($('[data-act="openChat"]'));ok($$('.msg.u').length===2&&$$('.msg.a').length===2&&$('[data-act="newChat"]'),'chat reopened');
+$('#chatIn').value='이어서 질문';$('form[data-form="chat"]').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await wait(30);
+ok(w.__app.chats().length===1&&w.__app.chats()[0].msgs.length===6,'continued same chat');
+click($('[data-act="newChat"]'));ok($$('.msg.u').length===0,'new chat is empty');
+w.location.hash='records';await wait(30);click($('[data-act="delChat"]'));ok(w.__app.chats().length===0&&calls.del.length===1,'chat deleted');
+ok(errors.length===0,'no script errors '+errors.join('|'));
+})().catch(e=>{console.log('FAIL exception',e);process.exitCode=1;});
