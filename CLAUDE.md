@@ -26,14 +26,20 @@
 
 ## 저장
 
-- `localStorage`: `nurse8-state-v1`(진도, 추가 문제, 요일별 학습), `nurse8-log-v1`(풀이 기록, 최근 1,500번), `nurse8-chats-v1`(대화, 최근 40개).
+- `localStorage`: `nurse8-state-v1`(진도, 추가 문제, 요일별 학습), `nurse8-log-v1`(풀이 기록, 최근 1,500번), `nurse8-chats-v1`(대화, 최근 40개), `nurse8-key-v1`(Pages용 API 키, 이 기기에만).
 - Claude 아티팩트 안에서는 `claude.use("db")` 로 계정에도 저장한다. 경로는 `data/users/<id>/state`, `.../state/chats/<chatId>`, `data/users/<id>/log`.
 
-## AI와 음성: 지금의 제약
+## AI와 음성
 
-AI 강사, 문제 생성, 음성 입력, 음성 출력은 `window.claude.use(...)` (`sample`, `dictation`, `tts`, `db`, `user`)에 의존한다. 이 API는 Claude 아티팩트로 열 때만 있다. GitHub Pages에서는 `window.claude` 가 없어서 이 기능들이 꺼지고, 기본 문제 풀이와 해설, 복습, 기록(기기 저장)만 동작한다.
+두 가지 방식이 있고, `window.claude` 가 있느냐(`HAS_CLAUDE`)로 고른다.
 
-GitHub Pages에서도 AI를 쓰려면 호출부를 바꿔야 한다. 고칠 곳은 `initCaps()`, `send()`, `generate()`, `speak()`, 마이크 처리(`act.mic`)다. API 키를 정적 페이지에 넣으면 노출되므로 방식은 사용자와 먼저 정한다(사용자가 자기 키를 입력, 또는 작은 프록시 서버).
+- Claude 아티팩트: `window.claude.use(...)` (`sample`, `dictation`, `tts`, `db`, `user`).
+- GitHub Pages(그 밖의 모든 곳): 사용자가 강사 화면의 카드에 자기 Anthropic API 키를 넣는다(사용자와 정한 방식). 키는 `localStorage` 의 `nurse8-key-v1` 에만 두고 계정 저장(db)에는 올리지 않는다. 기록 화면에서 지울 수 있고, 401이 오면 저절로 지운다.
+  - `keyAI()` 가 `sample` 과 같은 모양 `(input, {onText, modelTier}) → {text}` 로 `https://api.anthropic.com/v1/messages` 를 `fetch` 로 직접 부른다(`anthropic-dangerous-direct-browser-access` 헤더, 스트리밍, `readSSE()`).
+  - 모델은 `MODEL`(`claude-opus-5-5`). 대화는 effort `low`, 문제 만들기는 `medium`. 거절되면 서버가 다른 모델로 잇도록 `fallbacks: "default"` 를 보내고, 이 옵션이 400으로 막히면 빼고 한 번 다시 보낸다.
+  - 음성 입력은 `webDictation()` 이 Web Speech API(`SpeechRecognition`)를 `dictation` 과 같은 모양으로 감싼다. 읽어 주기는 `speechSynthesis` 를 쓴다. 파이어폭스 등 받아쓰기가 없는 브라우저에서는 마이크 버튼이 숨는다.
+- 계정 간 동기화(`db`)는 아티팩트에서만 된다. Pages에서는 기기 저장뿐이다.
+- 테스트: `test/test.js` 는 아티팩트 모드, `test/pages.js` 는 Pages 모드(모의 `fetch`, 모의 음성 인식)다.
 
 ## UI 규칙
 
@@ -54,7 +60,7 @@ GitHub Pages에서도 AI를 쓰려면 호출부를 바꿔야 한다. 고칠 곳�
 
 ## 아직 하지 않은 것
 
-- GitHub Pages에서 동작하는 AI 연동.
+- GitHub Pages에서의 계정 간 동기화.
 - 기본 문제 수 늘리기(특히 국어, 영어, 한국사는 과목당 4문제뿐이다).
 - 소크라테스 스킬의 0~5단계 숙련도 표, 상태 저장과 이어하기는 넣지 않았다.
-- 실제 기기에서의 AI 응답, 음성, 계정 간 동기화는 사람이 직접 확인한 적이 없다. 테스트는 모의 객체로만 돌렸다.
+- 실제 기기에서의 AI 응답(진짜 API 키로 호출), 음성, 계정 간 동기화는 사람이 직접 확인한 적이 없다. 테스트는 모의 객체로만 돌렸다.
