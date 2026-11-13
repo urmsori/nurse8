@@ -4,6 +4,7 @@ const html=fs.readFileSync(__dirname+'/../index.html','utf8');
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+'[pages] '+m);if(!c)process.exitCode=1;};
 const ANT='sk-ant-test-0123456789abcdef',GEM='AIzaTest0123456789abcdefghij',OAI='sk-proj-test0123456789abcdef';
+const NOWS='sk-ant-nows-0123456789abcdef',CORS='sk-ant-cors-0123456789abcdef';
 const QS='[{"unit":"동기부여","q":"새 문제?","opts":["a","b","c","d"],"ans":1,"exp":"해설"}]';
 function sse(events){const enc=new TextEncoder();const text=events.map(e=>'data: '+(typeof e==='string'?e:JSON.stringify(e))+'\n\n').join('');
   // 일부러 이벤트 중간에서 잘라 조각으로 보낸다.
@@ -24,6 +25,8 @@ function makeDom(reqs,flags,recs,before){return new JSDOM(html,{runScripts:'dang
   w.fetch=async(url,o)=>{o=o||{};const body=o.body?JSON.parse(o.body):null,h=o.headers||{};reqs.push({url,method:o.method||'GET',headers:h,body});
     const say=body?(/JSON 배열만/.test(JSON.stringify(body))?QS:'강사의 답입니다.'):'';
     if(url.startsWith('https://api.anthropic.com/')){
+      if(h['x-api-key']===NOWS)return err(400,{type:'invalid_request_error',message:'This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id header with the ID of the workspace to use.'});
+      if(h['x-api-key']===CORS)return err(401,{type:'authentication_error',message:'CORS requests are not allowed for this Organization because of its settings.'});
       if(h['x-api-key']!==ANT||flags.mode==='bad')return err(401,{type:'authentication_error',message:'invalid x-api-key'});
       if(/\/v1\/models/.test(url))return json({data:[{id:'claude-opus-5-5'}]});
       if(flags.mode==='nofb'&&body.fallbacks)return err(400,{type:'invalid_request_error',message:'fallbacks: unsupported beta'});
@@ -55,20 +58,25 @@ const connect=async v=>{type(v);submit($('form[data-form="key"]'));await wait(40
 const ask=async t=>{$('#chatIn').value=t;submit($('form[data-form="chat"]'));await wait(60);};
 const conn=()=>JSON.parse(w.localStorage.getItem('nurse8-key-v1')||'null');
 const forget=async()=>{w.location.hash='records';await wait(30);click($('[data-act="forgetKey"]'));w.location.hash='tutor';await wait(30);};
+let n=0;
 const res=(f,v)=>Object.assign([{transcript:v}],{isFinal:f});
 ok(!w.claude,'no window.claude');
 w.location.hash='tutor';await wait(30);
 // 안내 카드
 ok($('form[data-form="key"]')&&$('#chatIn').disabled,'guide card shown, chat disabled');
 ok($$('[data-act="prov"]').length===3&&$('[data-act="prov"][aria-pressed="true"]').dataset.p==='gemini','three providers, Gemini preselected');
-ok($$('.steps li').length===5&&/aistudio\.google\.com/.test($('a.btn').href)&&$('a.btn').target==='_blank','Gemini steps and link');
+ok($$('.steps li').length>=5&&/Gemini 앱이 아니라/.test($('.steps').textContent)&&/aistudio\.google\.com/.test($('a.btn').href)&&$('a.btn').target==='_blank','Gemini steps and link');
 ok(/API 키는/.test($('.sheet .body').textContent),'explains what an API key is');
 click($('[data-act="prov"][data-p="openai"]'));
 ok(/platform\.openai\.com/.test($('a.btn').href)&&/ChatGPT 구독/.test($('.sheet').textContent),'OpenAI steps and subscription note');
 click($('[data-act="prov"][data-p="anthropic"]'));
-ok(/platform\.claude\.com\/settings\/keys/.test($('a.btn').href),'Claude link');
-await connect('nope');
-ok(!conn()&&$('#keyMsg')&&reqs.length===0,'too-short key rejected without a request');
+ok(/platform\.claude\.com\/settings\/keys/.test($('a.btn').href)&&/Create key/.test($('.steps').textContent)&&/Workspace/.test($('.steps').textContent)&&/claude\.ai/.test($('.steps').textContent),'Claude link and steps');
+await connect(NOWS);
+ok(!conn()&&/Workspace를 고르지 않고/.test($('#keyMsg').textContent),'Claude key without workspace: explained');
+await connect(CORS);
+ok(!conn()&&/막혀 있습니다/.test($('#keyMsg').textContent),'Claude org blocks browser calls: explained');
+n=reqs.length;await connect('nope');
+ok(!conn()&&$('#keyMsg')&&reqs.length===n,'too-short key rejected without a request');
 await connect('sk-ant-wrong-0123456789abcdef');
 ok(!conn()&&/키가 맞지 않습니다/.test($('#keyMsg').textContent)&&$('#keyIn').value!=='','wrong key: message shown, input kept');
 // Claude
@@ -88,7 +96,7 @@ ok(recs.length===1&&recs[0].lang==='ko-KR'&&$('[data-act="mic"]').getAttribute('
 recs[0].onresult({resultIndex:0,results:[res(true,'혈압 '),res(false,'정상 범위')]});
 ok($('#chatIn').value==='혈압 정상 범위','dictation fills input: '+$('#chatIn').value);
 recs[0].onresult({resultIndex:1,results:[res(true,'혈압 '),res(true,'정상 범위는?')]});
-let n=reqs.length;click($('[data-act="mic"]'));await wait(60);
+n=reqs.length;click($('[data-act="mic"]'));await wait(60);
 ok(reqs.length===n+1&&/혈압 정상 범위는\?/.test(reqs[n].body.messages.map(m=>m.content).join('\n')),'stop mic sends dictated text');
 w.location.hash='quiz';await wait(30);
 click($('[data-act="gen"]'));await wait(60);
