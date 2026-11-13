@@ -1,17 +1,17 @@
-"""src/index.src.html 과 src/bank.js 를 합쳐 index.html 을 만든다.  사용: python3 build.py"""
-import re, pathlib
+"""src/index.src.html 과 src/bank/*.json 을 합쳐 index.html 을 만든다.  사용: python3 build.py"""
+import json, pathlib, sys
 root = pathlib.Path(__file__).parent
+sys.path.insert(0, str(root / 'tools'))
+from check_bank import FILES, load, check
+
 src = (root / 'src/index.src.html').read_text(encoding='utf-8')
-bank = (root / 'src/bank.js').read_text(encoding='utf-8')
-
-def conv(line):
-    # k01, e01, e03 은 문제의 "밑줄 친 부분"을 따옴표로 적어 두었다. __x__ 로 바꾸면 앱이 밑줄로 그린다.
-    if re.match(r"\{id:'(k01|e01|e03)'", line):
-        head, sep, tail = line.partition(",exp:")
-        return re.sub(r'"([^"]+)"', r'__\1__', head) + sep + tail
-    return line
-
-bank = '\n'.join(conv(l) for l in bank.split('\n')).replace('const BANK', 'var BANK')
+bank = load(root)
+errors = check(bank)
+if errors:
+    print('\n'.join(errors[:40]))
+    sys.exit('문제 은행에 오류가 %d개 있습니다.' % len(errors))
+# 문제마다 한 줄. </script> 가 문제 글에 들어 있어도 HTML 이 깨지지 않게 < 를 이스케이프한다.
+lines = ',\n'.join(json.dumps(q, ensure_ascii=False, separators=(',', ':')).replace('<', '\\u003c') for q in bank)
 assert src.count('/*BANK*/') == 1
-(root / 'index.html').write_text(src.replace('/*BANK*/', bank), encoding='utf-8')
-print('index.html 생성')
+(root / 'index.html').write_text(src.replace('/*BANK*/', 'var BANK = [\n' + lines + '\n];'), encoding='utf-8')
+print('index.html 생성: 문제 %d개' % len(bank))

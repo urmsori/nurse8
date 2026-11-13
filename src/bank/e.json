@@ -1,0 +1,6 @@
+[
+{"id":"e01","subj":"영어","unit":"어휘","q":"밑줄 친 부분과 의미가 가장 가까운 것은?\n\nThe nurse tried to __alleviate__ the patient's pain.","opts":["aggravate","relieve","ignore","measure"],"ans":1,"exp":"alleviate는 \"완화하다, 덜다\"라는 뜻으로 relieve, ease, lessen과 비슷하다. aggravate는 반대로 \"악화시키다\"이다."},
+{"id":"e02","subj":"영어","unit":"문법","q":"빈칸에 들어갈 말로 가장 적절한 것은?\n\nIf I ______ you, I would accept the offer.","opts":["am","was being","were","have been"],"ans":2,"exp":"현재 사실의 반대를 가정하는 가정법 과거이다. \"If + 주어 + 과거 동사, 주어 + would + 동사원형\" 구조이며, be동사는 주어와 관계없이 were를 쓴다."},
+{"id":"e03","subj":"영어","unit":"어휘","q":"밑줄 친 부분과 의미가 가장 가까운 것은?\n\nThe symptoms were so subtle that they were easily __overlooked__.","opts":["examined","missed","treated","recorded"],"ans":1,"exp":"overlook은 \"못 보고 지나치다, 간과하다\"라는 뜻으로 miss와 가깝다. 증상이 미묘해서(subtle) 쉽게 놓쳤다는 문맥이다."},
+{"id":"e04","subj":"영어","unit":"문법","q":"어법상 옳은 것은?","opts":["She suggested that he goes home.","I look forward to hear from you.","He is used to working at night.","The news were shocking."],"ans":2,"exp":"be used to는 \"~에 익숙하다\"라는 뜻이고 to가 전치사라 뒤에 동명사가 온다. suggest 뒤의 that절은 (should) go를 쓰고, look forward to 뒤에도 동명사 hearing이 와야 하며, news는 단수 취급하므로 was가 옳다."}
+]
