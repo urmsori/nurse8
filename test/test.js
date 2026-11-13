@@ -27,6 +27,7 @@ const day=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.getFullYear()
 const B=w.BANK,st=()=>w.__app.state(),q0=id=>B.find(x=>x.id===id)||st().custom.find(x=>x.id===id);
 ok($('.big').textContent==='10문제','home shows 10-question set');
 ok($('#navDue').hidden,'no due badge');
+ok(/^버전 \d+\.\d+\.\d+$/.test($('#ver').textContent),'version shown on home');
 click($('[data-act="today"]'));
 let s=w.__app.sess();ok(s&&s.ids.length===10&&new Set(s.ids).size===10,'today session 10 unique');
 ok($('[data-act="grade"]').disabled&&/답을 고르세요/.test($('[data-act="grade"]').textContent),'grade disabled before pick');

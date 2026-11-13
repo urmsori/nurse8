@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "python3 build.py",
-    "test": "python3 build.py && node test/test.js"
+    "test": "python3 build.py && node test/test.js && node test/pages.js"
   },
   "devDependencies": {
     "jsdom": "^31.0.0"
