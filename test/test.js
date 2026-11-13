@@ -25,7 +25,8 @@ const click=el=>{if(!el)throw new Error('missing element');el.dispatchEvent(new 
 const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)process.exitCode=1;};
 const day=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
 const B=w.BANK,st=()=>w.__app.state(),q0=id=>B.find(x=>x.id===id)||st().custom.find(x=>x.id===id);
-ok($('.big').textContent==='20문제'&&/하루 새 문제 20개/.test($('#goalNote').textContent)&&/아직 안 푼 문제 \d+개/.test($('#planNote').textContent),'home shows daily goal of 20 new questions');
+ok($('.big').textContent==='20문제'&&/하루 새 문제 20개/.test($('#goalNote').textContent),'home shows daily goal of 20 new questions');
+ok(!$('#planNote')&&!$('[data-act="subj"]')&&!$('#moreQ')&&!new RegExp(String(B.length)).test($('#app').textContent),'home does not show how many questions exist');
 ok($('#navDue').hidden,'no due badge');
 ok(/^버전 \d+\.\d+\.\d+$/.test($('#ver').textContent),'version shown on home');
 click($('[data-act="today"]'));
@@ -73,6 +74,7 @@ click($('[data-act="conf"][data-c="unsure"]'));p=st().prog[firstId];ok(p.stage==
 click($('[data-act="next"]'));ok(/모두 맞혔습니다/.test($('h1').textContent)&&$('.score'),'done screen');
 click($('[data-act="tab"][data-v="home"]'));w.location.hash='quiz';await wait(30);
 ok($('#addBox')&&$('[data-act="gen"]')&&$$('.rows [data-act="subj"]').length===5,'picker');
+ok(new RegExp('문제 '+(B.length+st().custom.length)+'개').test($('#planNote').textContent)&&/아직 안 푼 문제 \d+개/.test($('#planNote').textContent),'question counts live on the subject screen');
 await wait(1700);ok(calls.set.includes('data/users/u_1/state')&&calls.set.includes('data/users/u_1/log')&&calls.set.some(x=>x.startsWith('data/users/u_1/state/chats/c')),'db saved state, log, chat');
 const L=w.__app.log();ok(L.length===3&&L[0][3]===0&&L[1][4]==='u'&&L[2][3]===1,'log has 3 attempts with result and confidence '+JSON.stringify(L.map(e=>e.slice(2))));
 ok(w.__app.chats().length===1&&w.__app.chats()[0].msgs.length===4&&w.__app.chats()[0].title==='더 쉽게 설명해 주세요','chat saved with title');

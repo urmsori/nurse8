@@ -193,4 +193,13 @@ ok(w3.__app.sess()&&w3.__app.sess().ids.length===10,'extra set after goal has 10
 // 어제의 기록은 오늘 목표에 들어가지 않는다
 const w4=makeDom([],{mode:'ok',errors:[]},[],x=>x.localStorage.setItem('nurse8-state-v1',JSON.stringify({v:1,goal:10,newDay:{d:'2020-01-01',n:10},prog:{},custom:[],updatedAt:1}))).window;await wait(50);
 ok(w4.document.querySelector('.big').textContent==='10문제','yesterday does not count toward today');
+// 문제를 모두 한 번씩 풀면 새 문제 만들기를 권한다
+const w5=makeDom([],{mode:'ok',errors:[]},[],x=>{x.__all=true;}).window;await wait(50);
+const prog={};w5.BANK.forEach(q=>{prog[q.id]={stage:-1,due:null,seen:1,wrong:0,last:'correct'};});
+w5.localStorage.setItem('nurse8-state-v1',JSON.stringify({v:1,goal:20,prog,custom:[],updatedAt:Date.now()}));
+const w6=makeDom([],{mode:'ok',errors:[]},[],x=>x.localStorage.setItem('nurse8-state-v1',w5.localStorage.getItem('nurse8-state-v1'))).window;await wait(50);
+const d6=w6.document;
+ok(d6.querySelector('#moreQ')&&d6.querySelector('[data-act="addQ"]')&&/한 세트 더/.test(d6.querySelector('[data-act="today"]').textContent),'all solved: home suggests making new questions, extra set still available');
+d6.querySelector('[data-act="addQ"]').dispatchEvent(new w6.MouseEvent('click',{bubbles:true}));
+ok(d6.querySelector('h1').textContent==='과목'&&d6.querySelector('#addBox').hasAttribute('open')&&/새 문제를 만들 수 있습니다/.test(d6.querySelector('#planNote').textContent),'goes to the add-questions box, opened');
 })().catch(e=>{console.log('FAIL [pages] exception',e);process.exitCode=1;});
