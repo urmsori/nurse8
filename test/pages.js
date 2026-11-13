@@ -5,7 +5,10 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+'[pages] '+m);if(!c)process.exitCode=1;};
 const ANT='sk-ant-test-0123456789abcdef',GEM='AIzaTest0123456789abcdefghij',OAI='sk-proj-test0123456789abcdef';
 const NOWS='sk-ant-nows-0123456789abcdef',CORS='sk-ant-cors-0123456789abcdef';
-const QS='[{"unit":"동기부여","q":"새 문제?","opts":["a","b","c","d"],"ans":1,"exp":"해설"}]';
+let qn=0;
+const makeQs=text=>{const n=+((/4지선다 문제 (\d+)개/.exec(text)||[])[1]||1);return JSON.stringify(Array.from({length:n},()=>({unit:'동기부여',q:'새 문제 '+(++qn)+'?',opts:['a','b','c','d'],ans:1,exp:'해설'})));};
+// 답을 주지 않고 매달려 있다가, 취소(signal abort)되면 AbortError 로 끝난다.
+const hang=signal=>new Promise((_,rej)=>{if(signal)signal.addEventListener('abort',()=>rej(Object.assign(new Error('aborted'),{name:'AbortError'})));});
 function sse(events){const enc=new TextEncoder();const text=events.map(e=>'data: '+(typeof e==='string'?e:JSON.stringify(e))+'\n\n').join('');
   // 일부러 이벤트 중간에서 잘라 조각으로 보낸다.
   const parts=[text.slice(0,37),text.slice(37,120),text.slice(120)].map(s=>enc.encode(s));let i=0;
@@ -23,7 +26,11 @@ function makeDom(reqs,flags,recs,before){return new JSDOM(html,{runScripts:'dang
   w.addEventListener('error',e=>flags.errors.push(e.message));
   if(before)before(w);
   w.fetch=async(url,o)=>{o=o||{};const body=o.body?JSON.parse(o.body):null,h=o.headers||{};reqs.push({url,method:o.method||'GET',headers:h,body});
-    const say=body?(/JSON 배열만/.test(JSON.stringify(body))?QS:'강사의 답입니다.'):'';
+    const isGen=!!body&&/JSON 배열만/.test(JSON.stringify(body));
+    if(flags.hang==='all'||(flags.hang==='gen'&&isGen)||(flags.hang==='chat'&&body&&!isGen)||(flags.hang==='models'&&!body))return hang(o.signal);
+    const say=body?(isGen?makeQs(JSON.stringify(body)):'강사의 답입니다.'):'';
+    if(flags.hang==='mid'&&body&&!isGen){const bytes=new TextEncoder().encode(antReply('강사의 답').slice(0,-2).map(e=>'data: '+JSON.stringify(e)+'\n\n').join(''));let sent=false;
+      return {ok:true,status:200,body:{getReader:()=>({read:()=>{if(sent)return hang(o.signal);sent=true;return Promise.resolve({done:false,value:bytes});}})}};}
     if(url.startsWith('https://api.anthropic.com/')){
       if(h['x-api-key']===NOWS)return err(400,{type:'invalid_request_error',message:'This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id header with the ID of the workspace to use.'});
       if(h['x-api-key']===CORS)return err(401,{type:'authentication_error',message:'CORS requests are not allowed for this Organization because of its settings.'});
@@ -75,7 +82,13 @@ await connect(NOWS);
 ok(!conn()&&/Workspace를 고르지 않고/.test($('#keyMsg').textContent),'Claude key without workspace: explained');
 await connect(CORS);
 ok(!conn()&&/막혀 있습니다/.test($('#keyMsg').textContent),'Claude org blocks browser calls: explained');
-n=reqs.length;await connect('nope');
+n=reqs.length;ok($('#connChip').textContent==='연결 안 됨','status chip: not connected');
+flags.hang='models';type(ANT);submit($('form[data-form="key"]'));await wait(30);
+ok($('#keyWait')&&$('#connChip').textContent==='연결 확인 중…'&&$('[data-act="keyCancel"]')&&!$('form[data-form="key"] [type="submit"]'),'connecting: progress shown with cancel');
+click($('[data-act="keyCancel"]'));await wait(20);
+ok(!conn()&&!$('#keyWait')&&$('form[data-form="key"] [type="submit"]')&&$('#connChip').textContent==='연결 안 됨'&&$('#keyIn').value===ANT,'connect cancelled, key kept in the box');
+flags.hang='';type('');n=reqs.length;
+await connect('nope');
 ok(!conn()&&$('#keyMsg')&&reqs.length===n,'too-short key rejected without a request');
 await connect('sk-ant-wrong-0123456789abcdef');
 ok(!conn()&&/키가 맞지 않습니다/.test($('#keyMsg').textContent)&&$('#keyIn').value!=='','wrong key: message shown, input kept');
@@ -84,6 +97,7 @@ await connect('  "'+ANT+'" ');
 ok(conn()&&conn().p==='anthropic'&&conn().k===ANT&&conn().m==='claude-opus-5-5'&&!$('form[data-form="key"]')&&!$('#chatIn').disabled,'Claude connected (quotes and spaces stripped)');
 ok(!/sk-ant/.test(w.localStorage.getItem('nurse8-state-v1')||''),'key not in synced state');
 ok($('[data-act="mic"]'),'mic button from Web Speech API');
+ok($('#connChip').textContent==='Claude 연결됨'&&/\bon\b/.test($('#connChip').className),'status chip: connected');
 await ask('삼투압이 뭐예요?');
 let r=reqs[reqs.length-1];
 ok(r.url==='https://api.anthropic.com/v1/messages'&&r.headers['x-api-key']===ANT&&r.headers['anthropic-dangerous-direct-browser-access']==='true'&&r.headers['anthropic-version'],'Claude headers');
@@ -99,8 +113,32 @@ recs[0].onresult({resultIndex:1,results:[res(true,'혈압 '),res(true,'정상 �
 n=reqs.length;click($('[data-act="mic"]'));await wait(60);
 ok(reqs.length===n+1&&/혈압 정상 범위는\?/.test(reqs[n].body.messages.map(m=>m.content).join('\n')),'stop mic sends dictated text');
 w.location.hash='quiz';await wait(30);
+ok($('#genN')&&$('#genN').value==='5'&&$('#jobBar').hidden,'count selector defaults to 5');
 click($('[data-act="gen"]'));await wait(60);
-r=reqs[reqs.length-1];ok(r.body.output_config.effort==='medium'&&w.__app.state().custom.length===1&&w.__app.state().custom[0].ai,'generated question saved, marked AI');
+r=reqs[reqs.length-1];ok(r.body.output_config.effort==='medium'&&w.__app.state().custom.length===5&&w.__app.state().custom[0].ai&&$('#jobBar').hidden,'5 generated questions saved, marked AI');
+$('#genN').value='20';$('#genN').dispatchEvent(new w.Event('input',{bubbles:true}));
+n=reqs.length;click($('[data-act="gen"]'));await wait(120);
+ok(w.__app.state().custom.length===25&&reqs.length===n+4&&new Set(w.__app.state().custom.map(q=>q.id)).size===25,'20 questions made in 4 batches, ids unique');
+// 뒤에서 돌기: 만드는 동안 다른 화면을 쓰고 강사에게도 물을 수 있다
+flags.hang='gen';click($('[data-act="gen"]'));await wait(30);
+ok(!$('#jobBar').hidden&&/만드는 중 0\/20/.test($('#jobBar').textContent)&&$('#jobNote')&&!$('[data-act="gen"]')&&$$('[data-act="jobCancel"]').length===2,'job bar and note while generating');
+w.location.hash='home';await wait(30);
+ok($('h1').textContent==='오늘'&&!$('#jobBar').hidden,'job bar stays on other screens');
+w.location.hash='tutor';await wait(30);await ask('만드는 동안 질문');
+ok(/강사의 답입니다/.test($$('.msg.a').pop().textContent)&&!$('#jobBar').hidden,'tutor answers while generating');
+click($('#jobBar [data-act="jobCancel"]'));await wait(30);
+ok($('#jobBar').hidden&&w.__app.state().custom.length===25&&/취소/.test($('#toast').textContent),'job cancelled');
+flags.hang='';
+// 대화 멈추기
+flags.hang='chat';$('#chatIn').value='멈출 질문';submit($('form[data-form="chat"]'));await wait(30);
+ok($('[data-act="stop"]')&&!$('form[data-form="chat"] [type="submit"]'),'stop button while answering');
+click($('[data-act="stop"]'));await wait(30);
+ok(/답을 멈췄습니다/.test($$('.msg.n').pop().textContent)&&!$('[data-act="stop"]')&&$('form[data-form="chat"] [type="submit"]')&&!$('#stream'),'answer stopped before any text');
+flags.hang='mid';$('#chatIn').value='중간에 멈출 질문';submit($('form[data-form="chat"]'));await wait(60);
+ok($('#stream')&&/강사의 답/.test($('#stream').textContent),'partial answer streaming');
+click($('[data-act="stop"]'));await wait(30);
+ok(/강사의 답/.test($$('.msg.a').pop().textContent)&&/답을 멈췄습니다/.test($$('.msg.n').pop().textContent),'stopped mid-answer keeps the partial text');
+flags.hang='';
 flags.mode='nofb';w.location.hash='tutor';await wait(30);
 n=reqs.length;await ask('다시');
 ok(reqs.length===n+2&&!reqs[n+1].body.fallbacks&&!reqs[n+1].headers['anthropic-beta']&&/강사의 답/.test($$('.msg.a').pop().textContent),'retry without fallbacks');
