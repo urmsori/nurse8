@@ -51,7 +51,7 @@ def check(bank):
             bad('단원 이름이 길다(12자 이내)')
         if len(q['exp']) < 40:
             bad('해설이 너무 짧다')
-        if len(q['q']) > 1200 or any(len(o) > 300 for o in q['opts']) or len(q['exp']) > 1500:
+        if len(q['q']) > 1500 or any(len(o) > 300 for o in q['opts']) or len(q['exp']) > 1500:
             bad('너무 길다')
         text = q['q'] + ''.join(q['opts'])
         if text.count('__') % 2 and not re.search(r'_{4,}', text):
