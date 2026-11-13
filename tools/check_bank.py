@@ -65,6 +65,55 @@ def check(bank):
     return errs
 
 
+# ── 기출 모음(src/past/<연도>-<과목 글자>.json) ──
+PAST_KEYS = KEYS | {'no'}
+
+
+def load_past(root):
+    """[(파일 이름, 문제 목록)] 을 최근 연도부터 돌려준다."""
+    out = []
+    for p in sorted((pathlib.Path(root) / 'src/past').glob('*.json'), reverse=True):
+        out.append((p.stem, json.loads(p.read_text(encoding='utf-8'))))
+    return out
+
+
+def check_past(papers):
+    errs = []
+    for name, qs in papers:
+        m = re.fullmatch(r'(20\d\d)-([mckeh])', name)
+        if not m:
+            errs.append('%s: 파일 이름은 <연도>-<과목 글자>' % name); continue
+        yy, f = m.group(1)[2:], m.group(2)
+        if len(qs) != 20:
+            errs.append('%s: 20문항이 아니다(%d)' % (name, len(qs)))
+        for i, q in enumerate(qs):
+            qid = q.get('id', '?') if isinstance(q, dict) else '?'
+            def bad(msg):
+                errs.append('%s %s: %s' % (name, qid, msg))
+            if not isinstance(q, dict) or set(q) != PAST_KEYS:
+                bad('키가 다르다'); continue
+            if q['id'] != 'p%s%s%02d' % (yy, f, i + 1) or q['no'] != i + 1:
+                bad('id 는 p<연도 두 자리><과목 글자><번호 두 자리>, no 는 문항 번호여야 한다')
+            if q['subj'] != FILES[f]:
+                bad('과목이 파일과 다르다')
+            for k in ('unit', 'q', 'exp'):
+                if not isinstance(q[k], str) or not q[k].strip():
+                    bad('%s 가 비었다' % k)
+            if not (isinstance(q['opts'], list) and len(q['opts']) == 4 and all(isinstance(o, str) and o.strip() for o in q['opts'])):
+                bad('선지는 글자 4개'); continue
+            if q['ans'] not in (0, 1, 2, 3) or isinstance(q['ans'], bool):
+                bad('ans 는 0~3')
+            if len(q['unit']) > 12:
+                bad('단원 이름이 길다(12자 이내)')
+            if len(q['exp']) < 40:
+                bad('해설이 너무 짧다')
+            if len(q['q']) > 6000 or any(len(o) > 800 for o in q['opts']) or len(q['exp']) > 2000:
+                bad('너무 길다')
+            if re.search(r'[①②③④]', ''.join(q['opts'])):
+                bad('선지에 ①②③④ 번호를 넣지 않는다(앱이 붙인다)')
+    return errs
+
+
 def report(bank):
     by = collections.defaultdict(list)
     for q in bank:
@@ -82,5 +131,9 @@ if __name__ == '__main__':
     bank = load(root, only)
     errs = check(bank)
     report(bank)
+    papers = load_past(root)
+    if papers and not only:
+        errs += check_past(papers)
+        print('기출: %d회분 %d문항 (%s)' % (len(papers), sum(len(q) for _, q in papers), ', '.join(n for n, _ in papers)))
     print('\n'.join(errs) if errs else '형식 오류 없음')
     sys.exit(1 if errs else 0)
