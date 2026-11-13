@@ -367,6 +367,8 @@ function todayPlan(){var due=dueList(),nDue=Math.min(due.length,SET);
 var VIEWS=['home','quiz','review','tutor','records'],recShown=30;
 var view='home',sess=null,chat=[],ctxId=null,draft='',busy=false,genBusy=false,pickSubj=SUBJ[0],pasteDraft='',addOpen=false;
 var AI=null,D=null,TTS=null,listening=false,dictBase='',dictFinal='',dictPart='';
+// 화면이 새로 배포됐는지 확인하는 용도. 앱을 고칠 때마다 올린다(작은 수정은 끝자리, 기능 추가는 가운데 자리).
+var VERSION='1.2.0';
 var KEYLS='nurse8-key-v1',KEY='',MODEL='claude-opus-5-5',HAS_CLAUDE=!!(window.claude&&typeof window.claude.use==='function');
 try{KEY=localStorage.getItem(KEYLS)||'';}catch(e){}
 var app=document.getElementById('app'),nav=document.getElementById('nav');
@@ -446,6 +448,7 @@ function vHome(){var p=todayPlan(),n=p.nDue+p.nNew,did=S.days[day(0)]||0,h='',b=
   h+=sheet('이번 주','<span class="unit num">오늘 '+did+'문제 풂</span>','<div class="tbl week" style="grid-template-columns:repeat(7,minmax(0,1fr))">'+weekHtml()+'</div>');
   h+=sheet('과목별 진도','','<div class="rows">'+subjRows()+'</div>');
   h+='<p class="sub" style="text-align:center">'+(DOC?'학습 기록은 계정에 저장됩니다':'학습 기록은 이 기기에 저장됩니다')+'</p>';
+  h+='<p class="sub num" id="ver" style="text-align:center">버전 '+VERSION+'</p>';
   return h;}
 function penMark(ok,draw){return '<svg class="pen'+(draw?' draw':'')+'" aria-hidden="true" viewBox="0 0 76 58" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="'+(ok?'M40 6C20 4 5 14 6 29s17 24 35 23 30-12 29-26S56 5 33 9':'M12 52L64 6')+'"/></svg>';}
 function optHtml(q){

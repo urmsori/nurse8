@@ -8,6 +8,7 @@
 - `src/bank.js`: 기본 문제 은행 `BANK`.
 - `build.py`: 둘을 합쳐 루트의 `index.html` 을 만든다. `index.html` 은 직접 고치지 않는다.
 - `test/test.js`: jsdom 클릭 테스트. `npm test` 로 빌드 후 실행한다. 고친 뒤에는 항상 돌린다.
+- 버전: `src/index.src.html` 의 `VERSION` 이 오늘 화면 맨 아래에 "버전 x.y.z"로 나온다. 사용자가 새로 배포된 화면인지 확인하는 용도이므로 앱을 고칠 때마다 올린다(작은 수정은 끝자리, 기능 추가는 가운데 자리).
 
 ## 제품 원칙 (사용자가 정한 것)
 
