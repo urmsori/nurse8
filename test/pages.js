@@ -183,4 +183,14 @@ w2.location.hash='tutor';await wait(30);
 ok(!w2.document.querySelector('form[data-form="key"]')&&!w2.document.querySelector('#chatIn').disabled,'legacy key still works');
 w2.document.querySelector('#chatIn').value='안녕';w2.document.querySelector('form[data-form="chat"]').dispatchEvent(new w2.Event('submit',{bubbles:true,cancelable:true}));await wait(60);
 ok(reqs2.length===1&&reqs2[0].body.model==='claude-opus-5-5'&&flags2.errors.length===0,'legacy key calls Claude');
+// 하루 목표를 마친 날: 완료 표시가 나오고, 더 풀면 새 문제가 한 세트 나온다
+const today=(()=>{const x=new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');})();
+const w3=makeDom([],{mode:'ok',errors:[]},[],x=>x.localStorage.setItem('nurse8-state-v1',JSON.stringify({v:1,goal:10,newDay:{d:today,n:10},days:{[today]:10},prog:{},custom:[],updatedAt:1}))).window;await wait(50);
+const d3=w3.document;
+ok(w3.__app.state().goal===10&&d3.querySelector('#goalDone')&&!d3.querySelector('.big')&&/한 세트 더/.test(d3.querySelector('[data-act="today"]').textContent),'goal met: done message and one-more-set button');
+d3.querySelector('[data-act="today"]').dispatchEvent(new w3.MouseEvent('click',{bubbles:true}));
+ok(w3.__app.sess()&&w3.__app.sess().ids.length===10,'extra set after goal has 10 questions');
+// 어제의 기록은 오늘 목표에 들어가지 않는다
+const w4=makeDom([],{mode:'ok',errors:[]},[],x=>x.localStorage.setItem('nurse8-state-v1',JSON.stringify({v:1,goal:10,newDay:{d:'2020-01-01',n:10},prog:{},custom:[],updatedAt:1}))).window;await wait(50);
+ok(w4.document.querySelector('.big').textContent==='10문제','yesterday does not count toward today');
 })().catch(e=>{console.log('FAIL [pages] exception',e);process.exitCode=1;});

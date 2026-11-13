@@ -240,8 +240,9 @@ u{text-underline-offset:4px}
 </div></nav>
 <dialog id="dlg" aria-labelledby="dlgT">
 <form id="dlgF" class="col" style="gap:14px">
-<header class="sh" style="margin:0"><b class="subj" id="dlgT">시험일 설정</b></header>
+<header class="sh" style="margin:0"><b class="subj" id="dlgT">학습 설정</b></header>
 <label class="col" for="examIn"><span class="sub">필기시험 날짜</span><input class="field" type="date" id="examIn"></label>
+<label class="col" for="goalIn"><span class="sub">하루에 새로 풀 문제 수 (복습할 문제는 여기에 더해집니다)</span><select class="field" id="goalIn"></select></label>
 <div class="row"><button type="button" class="btn quiet sm" data-act="dlgClose">취소</button><button type="submit" class="btn sm">저장</button></div>
 </form>
 </dialog>
@@ -768,9 +769,12 @@ var I={stop:'<rect x="6" y="6" width="12" height="12" rx="1"/>',mic:'<path d="M1
   chat:'<path d="M4 5h16v11H9l-5 4z"/>'};
 
 // ── 상태 ──
-function blank(){return {v:1,examDate:null,prog:{},custom:[],days:{},mix:true,voiceOut:true,updatedAt:0};}
+var GOALS=[5,10,20,30],GOAL=20;
+function blank(){return {v:1,examDate:null,goal:GOAL,newDay:null,prog:{},custom:[],days:{},mix:true,voiceOut:true,updatedAt:0};}
 function normalize(s){var b=blank();if(!s||typeof s!=='object')return b;
   b.examDate=typeof s.examDate==='string'?s.examDate:null;
+  b.goal=GOALS.indexOf(+s.goal)>=0?+s.goal:GOAL;
+  b.newDay=s.newDay&&typeof s.newDay.d==='string'?{d:s.newDay.d,n:+s.newDay.n||0}:null;
   b.prog=(s.prog&&typeof s.prog==='object')?s.prog:{};
   b.days=(s.days&&typeof s.days==='object')?s.days:{};
   b.custom=Array.isArray(s.custom)?s.custom.filter(validQ):[];
@@ -833,16 +837,28 @@ function plain(s){return String(s).replace(/_{4,}/g,'(빈칸)').replace(/__/g,''
 function first(q){return plain(q.q).split('\n')[0];}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display='none';},3200);}
 function leastSeen(qs,n){qs=shuffle(qs);qs.sort(function(a,b){return seen(a)-seen(b);});return qs.slice(0,n);}
-function todayPlan(){var due=dueList(),nDue=Math.min(due.length,SET);
+function newToday(){var n=S.newDay;return n&&n.d===day(0)?n.n:0;}
+// 오늘 할 양 = 복습할 문제 전부 + 하루 목표만큼의 새 문제(한 번도 안 푼 문제). 한 세트는 SET 문제이고,
+// 복습과 새 문제가 함께 끝나도록 남은 비율대로 섞는다. 목표를 마친 뒤(extra)에는 새 문제를 더 주고, 새 문제가 없으면 덜 푼 문제를 준다.
+function todayPlan(extra){var due=dueList(),fresh=allQ().filter(function(q){return !seen(q);});
   var rest=allQ().filter(function(q){return due.indexOf(q)<0&&!inLadder(S.prog[q.id]);});
-  return {due:due,rest:rest,nDue:nDue,nNew:Math.min(SET-nDue,rest.length)};}
+  var newLeft=Math.max(0,Math.min(S.goal-newToday(),fresh.length)),left=due.length+newLeft;
+  var pool=newLeft?fresh:[],nNew=0,nDue=Math.min(due.length,SET);
+  if(newLeft){nNew=Math.min(newLeft,Math.max(SET-nDue,Math.round(SET*newLeft/left)));nDue=Math.min(due.length,SET-nNew);}
+  else if(!due.length&&extra){pool=fresh.length?fresh:rest;nNew=Math.min(SET,pool.length);}
+  return {due:due,rest:rest,fresh:fresh,pool:pool,newLeft:newLeft,left:left,nDue:nDue,nNew:nNew};}
+function planNote(){var f=allQ().filter(function(q){return !seen(q);}).length;if(!f)return '모든 문제를 한 번 이상 풀었습니다. 복습과 다시 풀기로 다져 보세요.';
+  var days=Math.ceil(f/S.goal),t='아직 안 푼 문제 '+f+'개. 지금 속도면 약 '+days+'일 뒤에 모두 풉니다.';
+  if(S.examDate){var d=Math.round((new Date(S.examDate+'T00:00:00')-new Date(day(0)+'T00:00:00'))/864e5);
+    if(d>0&&days>d)t+=' 시험일 전에 다 보려면 하루 '+Math.ceil(f/d)+'개가 필요합니다.';}
+  return t;}
 
 // ── 화면 상태 ──
 var VIEWS=['home','quiz','review','tutor','records'],recShown=30;
 var view='home',sess=null,chat=[],ctxId=null,draft='',busy=false,job=null,genN=5,qSeq=0,chatTask=null,keyTask=null,pickSubj=SUBJ[0],pasteDraft='',addOpen=false;
 var AI=null,D=null,TTS=null,listening=false,dictBase='',dictFinal='',dictPart='';
 // 화면이 새로 배포됐는지 확인하는 용도. 앱을 고칠 때마다 올린다(작은 수정은 끝자리, 기능 추가는 가운데 자리).
-var VERSION='1.5.0';
+var VERSION='1.6.0';
 var KEYLS='nurse8-key-v1',CONN=null,MODEL='claude-opus-5-5',HAS_CLAUDE=!!(window.claude&&typeof window.claude.use==='function');
 var keyProv='gemini',keyDraft='',keyBusy=false,keyMsg='';
 var app=document.getElementById('app'),nav=document.getElementById('nav');
@@ -850,8 +866,8 @@ var app=document.getElementById('app'),nav=document.getElementById('nav');
 function startSession(title,ids){if(!ids.length){toast('풀 문제가 없습니다.');return;}
   sess={title:title,ids:ids,idx:0,pick:null,conf:'sure',graded:false,ok:false,msg:'',prev:null,right:0,log:[],done:false,pop:false,w:0,kind:{}};
   ids.forEach(function(id){var p=S.prog[id];sess.kind[id]=inLadder(p)?'복습':(p&&p.seen?'다시 풀기':'새 문제');});go('quiz');}
-function startToday(){var p=todayPlan();
-  var ids=shuffle(p.due).slice(0,p.nDue).concat(leastSeen(p.rest,p.nNew)).map(function(q){return q.id;});
+function startToday(){var p=todayPlan(true);
+  var ids=shuffle(p.due).slice(0,p.nDue).concat(leastSeen(p.pool,p.nNew)).map(function(q){return q.id;});
   startSession('오늘의 학습',shuffle(ids));}
 function startSubject(s){startSession(s,leastSeen(allQ().filter(function(q){return q.subj===s;}),SET).map(function(q){return q.id;}));}
 function startReview(){var d=dueList();
@@ -876,6 +892,7 @@ function schedule(q,ok,c,prev){var t=day(0),msg='';
   S.prog[q.id]=p;return msg;}
 function grade(){var q=cur();if(!q||sess.pick==null||sess.graded)return;
   var ok=sess.pick===q.ans;sess.prev=S.prog[q.id]?JSON.stringify(S.prog[q.id]):null;
+  if(!seen(q))S.newDay={d:day(0),n:newToday()+1};
   sess.conf='sure';sess.msg=schedule(q,ok,'sure',sess.prev);
   S.days[day(0)]=(S.days[day(0)]||0)+1;
   sess.graded=true;sess.ok=ok;sess.pop=true;if(ok)sess.right++;sess.log.push({id:q.id,ok:ok});logAdd(q,sess.pick,ok);
@@ -910,15 +927,21 @@ function subjRows(){return SUBJ.map(function(s){var qs=allQ().filter(function(q)
   var n=qs.filter(function(q){return seen(q)>0;}).length;
   return '<button data-act="subj" data-s="'+esc(s)+'"><span class="sname">'+esc(s)+'</span><span class="bar"><i style="width:'+(qs.length?Math.round(n/qs.length*100):0)+'%"></i></span><span class="cnt num">'+n+'/'+qs.length+'</span></button>';}).join('');}
 function sheet(title,side,body,attr){return '<section class="sheet"'+(attr||'')+'><header class="sh"><b class="subj">'+title+'</b>'+(side||'')+'</header>'+body+'</section>';}
-function vHome(){var p=todayPlan(),n=p.nDue+p.nNew,did=S.days[day(0)]||0,h='',b='';
+function vHome(){var p=todayPlan(),n=p.left,did=S.days[day(0)]||0,h='',b='';
   h+='<div class="head"><h1>오늘</h1><button class="pill" data-act="exam">'+esc(dday())+'</button></div>';
+  var goalRow='<div class="row between" style="min-height:44px"><span class="sub num" id="goalNote">하루 새 문제 '+S.goal+'개 · 한 세트 '+SET+'문제</span><button class="pill" data-act="exam">목표 바꾸기</button></div>';
   if(n){
     b+='<div class="col" style="gap:14px"><div class="big num">'+n+'<small>문제</small></div>';
-    b+='<div class="col" style="gap:8px"><div class="split" role="img" aria-label="복습 '+p.nDue+'문제, 새 문제 '+p.nNew+'문제">'+(p.nDue?'<i class="r" style="flex:'+p.nDue+'"></i>':'')+(p.nNew?'<i class="n" style="flex:'+p.nNew+'"></i>':'')+'</div>';
-    b+='<div class="legend"><span><i class="dot" style="background:var(--no)"></i>복습 <b class="num">'+p.nDue+'</b></span><span><i class="dot" style="background:var(--pen)"></i>새 문제 <b class="num">'+p.nNew+'</b></span></div></div>';
-    b+='<button class="btn" data-act="today">'+(did?'한 세트 더 풀기':'시작하기')+'</button></div>';
-    h+=sheet('오늘의 학습','<span class="kind">약 '+Math.max(1,Math.round(n/2))+'분</span>',b);
+    b+='<div class="col" style="gap:8px"><div class="split" role="img" aria-label="복습 '+p.due.length+'문제, 새 문제 '+p.newLeft+'문제">'+(p.due.length?'<i class="r" style="flex:'+p.due.length+'"></i>':'')+(p.newLeft?'<i class="n" style="flex:'+p.newLeft+'"></i>':'')+'</div>';
+    b+='<div class="legend"><span><i class="dot" style="background:var(--no)"></i>복습 <b class="num">'+p.due.length+'</b></span><span><i class="dot" style="background:var(--pen)"></i>새 문제 <b class="num">'+p.newLeft+'</b></span></div></div>';
+    b+='<button class="btn" data-act="today">'+(did?'다음 세트 풀기':'시작하기')+'</button>'+goalRow+'</div>';
+    h+=sheet('오늘 남은 학습','<span class="kind">약 '+Math.max(1,Math.round(n/2))+'분</span>',b);
+  }else if(allQ().length){
+    b='<div class="col" style="gap:14px"><p class="body" id="goalDone">'+(did?'오늘 목표를 마쳤습니다. 더 풀고 싶으면 한 세트씩 이어서 풀 수 있습니다.':'오늘 복습할 문제와 새 문제가 없습니다. 덜 푼 문제를 다시 풀어 볼 수 있습니다.')+'</p>';
+    b+='<button class="btn" data-act="today">한 세트 더 풀기</button>'+goalRow+'</div>';
+    h+=sheet('오늘의 학습',did?'<span class="kind">완료</span>':'',b);
   }else{h+=sheet('오늘의 학습','','<div class="col" style="gap:14px"><p class="body">풀 문제가 없습니다. 과목 쪽에서 새 문제를 추가할 수 있습니다.</p><button class="btn" data-act="tab" data-v="quiz">과목으로 가기</button></div>');}
+  h+='<p class="sub num" id="planNote" style="text-align:center">'+esc(planNote())+'</p>';
   h+=sheet('이번 주','<span class="unit num">오늘 '+did+'문제 풂</span>','<div class="tbl week" style="grid-template-columns:repeat(7,minmax(0,1fr))">'+weekHtml()+'</div>');
   h+=sheet('과목별 진도','','<div class="rows">'+subjRows()+'</div>');
   h+='<p class="sub" style="text-align:center">'+(DOC?'학습 기록은 계정에 저장됩니다':'학습 기록은 이 기기에 저장됩니다')+'</p>';
@@ -1299,7 +1322,8 @@ function genPrompt(subj,n,seed){var ex=allQ().filter(function(q){return q.subj==
 function dlg(id,open){var d=document.getElementById(id);try{if(open)d.showModal();else d.close();}catch(e){if(open)d.setAttribute('open','');else d.removeAttribute('open');}}
 var act={
   tab:function(t){if(t.dataset.reset)sess=null;go(t.dataset.v);},
-  exam:function(){document.getElementById('examIn').value=S.examDate||'';dlg('dlg',true);},
+  exam:function(){document.getElementById('examIn').value=S.examDate||'';
+    document.getElementById('goalIn').innerHTML=GOALS.map(function(g){return '<option value="'+g+'"'+(g===S.goal?' selected':'')+'>'+g+'문제'+(g===GOAL?' (기본)':'')+'</option>';}).join('');dlg('dlg',true);},
   dlgClose:function(){dlg('dlg',false);},
   today:function(){startToday();},
   review:function(){startReview();},
@@ -1355,7 +1379,7 @@ var act={
 };
 document.addEventListener('click',function(e){var t=e.target.closest('[data-act]');if(!t||t.disabled)return;var f=act[t.dataset.act];if(f)f(t,e);});
 document.addEventListener('submit',function(e){e.preventDefault();
-  if(e.target.id==='dlgF'){S.examDate=document.getElementById('examIn').value||null;save();dlg('dlg',false);render();}
+  if(e.target.id==='dlgF'){S.examDate=document.getElementById('examIn').value||null;var g=+document.getElementById('goalIn').value;if(GOALS.indexOf(g)>=0)S.goal=g;save();dlg('dlg',false);render();}
   else if(e.target.dataset.form==='chat'){var i=document.getElementById('chatIn');send(i.value);}
   else if(e.target.dataset.form==='key'){var ki=document.getElementById('keyIn');if(ki)keyDraft=ki.value;connectKey();}});
 document.addEventListener('input',function(e){if(e.target.id==='chatIn')draft=e.target.value;else if(e.target.id==='keyIn')keyDraft=e.target.value;else if(e.target.id==='genSubj')pickSubj=e.target.value;else if(e.target.id==='genN')genN=+e.target.value||5;else if(e.target.id==='pasteIn')pasteDraft=e.target.value;});
