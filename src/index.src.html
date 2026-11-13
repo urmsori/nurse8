@@ -341,7 +341,7 @@ var VIEWS=['home','quiz','review','tutor','records'],recShown=30;
 var view='home',sess=null,chat=[],ctxId=null,draft='',busy=false,job=null,genN=5,qSeq=0,chatTask=null,keyTask=null,pickSubj=SUBJ[0],pasteDraft='',addOpen=false;
 var AI=null,D=null,TTS=null,listening=false,dictBase='',dictFinal='',dictPart='';
 // 화면이 새로 배포됐는지 확인하는 용도. 앱을 고칠 때마다 올린다(작은 수정은 끝자리, 기능 추가는 가운데 자리).
-var VERSION='1.4.0';
+var VERSION='1.5.0';
 var KEYLS='nurse8-key-v1',CONN=null,MODEL='claude-opus-5-5',HAS_CLAUDE=!!(window.claude&&typeof window.claude.use==='function');
 var keyProv='gemini',keyDraft='',keyBusy=false,keyMsg='';
 var app=document.getElementById('app'),nav=document.getElementById('nav');
