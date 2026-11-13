@@ -27,7 +27,7 @@
 
 ## 저장
 
-- `localStorage`: `nurse8-state-v1`(진도, 추가 문제, 요일별 학습), `nurse8-log-v1`(풀이 기록, 최근 1,500번), `nurse8-chats-v1`(대화, 최근 40개), `nurse8-key-v1`(Pages용 API 키, 이 기기에만).
+- `localStorage`: `nurse8-state-v1`(진도, 추가 문제, 요일별 학습), `nurse8-log-v1`(풀이 기록, 최근 1,500번), `nurse8-chats-v1`(대화, 최근 40개), `nurse8-key-v1`(Pages용 AI 연결 정보: 회사, API 키, 모델. 이 기기에만).
 - Claude 아티팩트 안에서는 `claude.use("db")` 로 계정에도 저장한다. 경로는 `data/users/<id>/state`, `.../state/chats/<chatId>`, `data/users/<id>/log`.
 
 ## AI와 음성
@@ -35,9 +35,12 @@
 두 가지 방식이 있고, `window.claude` 가 있느냐(`HAS_CLAUDE`)로 고른다.
 
 - Claude 아티팩트: `window.claude.use(...)` (`sample`, `dictation`, `tts`, `db`, `user`).
-- GitHub Pages(그 밖의 모든 곳): 사용자가 강사 화면의 카드에 자기 Anthropic API 키를 넣는다(사용자와 정한 방식). 키는 `localStorage` 의 `nurse8-key-v1` 에만 두고 계정 저장(db)에는 올리지 않는다. 기록 화면에서 지울 수 있고, 401이 오면 저절로 지운다.
-  - `keyAI()` 가 `sample` 과 같은 모양 `(input, {onText, modelTier}) → {text}` 로 `https://api.anthropic.com/v1/messages` 를 `fetch` 로 직접 부른다(`anthropic-dangerous-direct-browser-access` 헤더, 스트리밍, `readSSE()`).
-  - 모델은 `MODEL`(`claude-opus-5-5`). 대화는 effort `low`, 문제 만들기는 `medium`. 거절되면 서버가 다른 모델로 잇도록 `fallbacks: "default"` 를 보내고, 이 옵션이 400으로 막히면 빼고 한 번 다시 보낸다.
+- GitHub Pages(그 밖의 모든 곳): 사용자가 자기 API 키를 넣는다(사용자와 정한 방식). 회사는 셋 중에서 고른다: Google Gemini(기본 선택, 무료 한도로 시작 가능), Claude, OpenAI. 정의는 `PROV` 에 있고 회사마다 `pick(키)`(키 확인과 모델 고르기)와 `chat(연결, 메시지, 옵션)` 을 가진다.
+  - 사용자 대부분은 API 키가 무엇인지 모른다. 강사 화면의 안내 카드(`keyCard()`)가 "API 키란 무엇인가 → 회사 고르기 → 키 받는 순서(번호 목록과 사이트 열기 버튼) → 붙여 넣기"를 차례로 보여 준다. 안내 문구(`PROV[..].steps`, `note`)는 쉬운 말로 쓰고, 각 사이트의 화면이 바뀌면 함께 고친다.
+  - "연결하기"를 누르면 `connectKey()` 가 그 회사의 모델 목록을 받아 키가 맞는지 먼저 확인하고, 틀리면 카드 안에 무엇을 고칠지 알려 준다(`keyErr()`). 키 모양(`sk-ant-`, `AIza`, `sk-`)으로 회사를 알 수 있으면 고른 것과 달라도 맞춰 준다.
+  - 연결 정보 `{p:회사, k:키, m:모델}` 는 `localStorage` 의 `nurse8-key-v1` 에만 두고 계정 저장(db)에는 올리지 않는다. 기록 화면에서 끊을 수 있고, 키가 틀렸다는 응답이 오면 저절로 지운다. 1.2 까지 저장하던 형식(Claude 키 글자만)도 읽는다.
+  - `keyAI()` 가 `sample` 과 같은 모양 `(input, {onText, modelTier}) → {text}` 로 감싼다. 모두 `fetch` 스트리밍이고 `readSSE()` 로 읽는다.
+  - 모델: Claude는 `MODEL`(`claude-opus-5-5`)로 고정. 대화는 effort `low`, 문제 만들기는 `medium`. 거절되면 서버가 다른 모델로 잇도록 `fallbacks: "default"` 를 보내고, 이 옵션이 400으로 막히면 빼고 한 번 다시 보낸다. Gemini와 OpenAI는 모델 이름이 자주 바뀌므로 코드에 적어 두지 않고, 연결할 때 받은 목록에서 고른다(Gemini: 버전이 가장 높은 정식 `gemini-N-flash`, OpenAI: 버전이 가장 높은 `gpt-N`). 저장한 모델이 없어졌다는 응답(404)이 오면 목록을 다시 받아 한 번 더 보낸다.
   - 음성 입력은 `webDictation()` 이 Web Speech API(`SpeechRecognition`)를 `dictation` 과 같은 모양으로 감싼다. 읽어 주기는 `speechSynthesis` 를 쓴다. 파이어폭스 등 받아쓰기가 없는 브라우저에서는 마이크 버튼이 숨는다.
 - 계정 간 동기화(`db`)는 아티팩트에서만 된다. Pages에서는 기기 저장뿐이다.
 - 테스트: `test/test.js` 는 아티팩트 모드, `test/pages.js` 는 Pages 모드(모의 `fetch`, 모의 음성 인식)다.
@@ -64,4 +67,4 @@
 - GitHub Pages에서의 계정 간 동기화.
 - 기본 문제 수 늘리기(특히 국어, 영어, 한국사는 과목당 4문제뿐이다).
 - 소크라테스 스킬의 0~5단계 숙련도 표, 상태 저장과 이어하기는 넣지 않았다.
-- 실제 기기에서의 AI 응답(진짜 API 키로 호출), 음성, 계정 간 동기화는 사람이 직접 확인한 적이 없다. 테스트는 모의 객체로만 돌렸다.
+- 실제 기기에서의 AI 응답(세 회사 모두 진짜 API 키로 호출), 음성, 계정 간 동기화는 사람이 직접 확인한 적이 없다. 테스트는 모의 객체로만 돌렸다. Gemini와 OpenAI는 작업 환경에서 공식 문서를 열 수 없어 요청 형식, 키 받는 화면의 버튼 이름, Gemini 무료 한도를 기억에 의존해 썼다. 진짜 키로 확인이 필요하다.
