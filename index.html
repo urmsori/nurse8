@@ -200,8 +200,18 @@ details > summary::-webkit-details-marker{display:none}
 details[open] > summary .chev{transform:rotate(90deg)}
 
 /* 강사 */
-.ctx{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 4px 4px 12px;border-radius:4px;background:var(--card);font-size:13px;font-weight:700}
-.ctx span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctxq > summary{font-size:13px}
+.ctxq > summary .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;color:var(--sub)}
+.ctxq[open] > summary .t{visibility:hidden}
+.ctxq[open] > summary .chev{transform:rotate(90deg)}
+.ctxq div.opt{min-height:0;padding:8px}
+.omr{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:4px;padding:4px 0 10px}
+.oc{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;min-height:52px;padding:2px 0;border:1px solid var(--line);border-radius:4px;background:none;color:var(--no)}
+.oc small{font-size:11px;font-weight:700;color:var(--sub);line-height:1.2}
+.oc:disabled{opacity:.45}
+.oc.sel{border-color:var(--ink);background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.oc.sel small{color:var(--ink)}
+.selbar{position:sticky;bottom:72px;margin:0 -20px;padding:10px 20px 12px;background:var(--paper);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;z-index:3}
 .chat{display:flex;flex-direction:column;gap:12px;flex:1}
 .msg{max-width:90%;padding:12px 14px;border-radius:4px;white-space:pre-wrap}
 .msg.u{align-self:flex-end;background:var(--ink);color:var(--card);font-size:15px;font-weight:600;line-height:1.6}
@@ -1599,6 +1609,7 @@ function push(){if(!DOC)return;if(pushing){again=true;return;}pushing=true;
 // ── 대화 기록과 풀이 기록 ──
 var LS2='nurse8-chats-v1',LS3='nurse8-log-v1',CH=[],LOG=[],C=null,CHCOL=null,LOGDOC=null,chatPush={},logT=null,logBusy=false,logAgain=false;
 function validChat(c){return c&&typeof c.id==='string'&&Array.isArray(c.msgs)&&c.msgs.length>0;}
+var LOGMAX=3000;  // 풀이 기록은 최근 3,000번까지 둔다
 function validLog(e){return Array.isArray(e)&&typeof e[0]==='number'&&typeof e[1]==='string';}
 try{CH=(JSON.parse(localStorage.getItem(LS2))||[]).filter(validChat);}catch(e){CH=[];}
 try{LOG=(JSON.parse(localStorage.getItem(LS3))||[]).filter(validLog);}catch(e){LOG=[];}
@@ -1623,10 +1634,10 @@ function storeLog(){try{localStorage.setItem(LS3,JSON.stringify(LOG));}catch(e){
 function pushLog(){if(!LOGDOC)return;if(logBusy){logAgain=true;return;}logBusy=true;
   LOGDOC.set({json:JSON.stringify(LOG),updatedAt:Date.now()}).then(function(){},function(){})
   .then(function(){logBusy=false;if(logAgain){logAgain=false;pushLog();}});}
-function logAdd(q,pick,ok){LOG.push([Date.now(),q.id,pick,ok?1:0,'s']);if(LOG.length>1500)LOG=LOG.slice(-1500);storeLog();}
+function logAdd(q,pick,ok){LOG.push([Date.now(),q.id,pick,ok?1:0,'s']);if(LOG.length>LOGMAX)LOG=LOG.slice(-LOGMAX);storeLog();}
 function logConf(c){var e=LOG[LOG.length-1];if(e){e[4]=c.charAt(0);storeLog();}}
 function mergeLog(remote){var seenK={},out=[];LOG.concat(remote).forEach(function(e){if(!validLog(e))return;var k=e[0]+'|'+e[1];if(seenK[k])return;seenK[k]=1;out.push(e);});
-  out.sort(function(a,b){return a[0]-b[0];});return out.slice(-1500);}
+  out.sort(function(a,b){return a[0]-b[0];});return out.slice(-LOGMAX);}
 
 // ── 도우미 ──
 function fmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1668,10 +1679,10 @@ function planNote(){var f=myQ().filter(function(q){return !seen(q);}).length,pre
 
 // ── 화면 상태 ──
 var VIEWS=['home','quiz','review','tutor','records'],recShown=30;
-var view='home',sess=null,chat=[],ctxId=null,draft='',busy=false,pastOpen=false,job=null,genN=5,qSeq=0,chatTask=null,keyTask=null,pickSubj=SUBJ[0],pasteDraft='',addOpen=false;
+var view='home',sess=null,chat=[],ctxId=null,draft='',busy=false,pastOpen=false,ctxOpen=true,recList=false,selMode=false,selA=null,selB=null,job=null,genN=5,qSeq=0,chatTask=null,keyTask=null,pickSubj=SUBJ[0],pasteDraft='',addOpen=false;
 var AI=null,D=null,TTS=null,listening=false,dictBase='',dictFinal='',dictPart='';
 // 화면이 새로 배포됐는지 확인하는 용도. 앱을 고칠 때마다 올린다(작은 수정은 끝자리, 기능 추가는 가운데 자리).
-var VERSION='1.11.0';
+var VERSION='1.12.0';
 var KEYLS='nurse8-key-v1',CONN=null,MODEL='claude-opus-5-5',HAS_CLAUDE=!!(window.claude&&typeof window.claude.use==='function');
 var keyProv='gemini',keyDraft='',keyBusy=false,keyMsg='';
 var app=document.getElementById('app'),nav=document.getElementById('nav');
@@ -1838,9 +1849,21 @@ function vReview(){var cnt=[0,0,0,0,0];revQ().forEach(function(q){var p=S.prog[q
 function dayText(t){var d=new Date(t);return (d.getMonth()+1)+'월 '+d.getDate()+'일 '+'일월화수목금토'.charAt(d.getDay())+'요일';}
 function whenText(t){var d=new Date(t);return dayText(t)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function slash(sz){return '<svg aria-hidden="true" width="'+sz+'" height="'+sz+'" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M8 34L32 6"/></svg>';}
+// 기록에서 다시 풀 문제를 고른다. from~to 는 LOG 의 자리(포함). 같은 문제를 여러 번 풀었으면 그 범위의 마지막 결과를 본다.
+function pickFromLog(from,to,wrongOnly){var last={},order=[];
+  for(var i=from;i<=to;i++){var e=LOG[i];if(!e)continue;if(!(e[1] in last))order.push(e[1]);last[e[1]]=e[3];}
+  return order.filter(function(id){return qBy(id)&&(!wrongOnly||!last[id]);});}
+function selRange(){if(selA==null)return null;var b=selB==null?selA:selB;return [Math.min(selA,b),Math.max(selA,b)];}
 function vRecords(){var h='<div class="head"><h1>기록</h1></div>',b='',n=LOG.length,r=LOG.filter(function(e){return e[3];}).length;
+  var rg=selMode?selRange():null;
   if(!n){b='<p class="body">아직 푼 문제가 없습니다. 문제를 풀면 날짜별로 여기에 남습니다.</p>';}
-  else{b='<p class="body num" style="margin-bottom:12px">지금까지 '+n+'번 풀어 '+r+'번 맞혔습니다. 정답률 '+Math.round(r/n*100)+'%</p><div class="rows">';
+  else{var wrongAll=pickFromLog(0,n-1,true).length;
+    b='<p class="body num" style="margin-bottom:12px">지금까지 '+n+'번 풀어 '+r+'번 맞혔습니다. 정답률 '+Math.round(r/n*100)+'%</p>';
+    b+='<div class="col" style="gap:10px;margin-bottom:12px"><button class="btn sm" data-act="retryWrong"'+(wrongAll?'':' disabled')+'>'+(wrongAll?'틀린 문제 '+wrongAll+'개 다시 풀기':'다시 풀 틀린 문제가 없습니다')+'</button>';
+    b+='<div class="chips"><button class="pill" data-act="selMode" aria-pressed="'+selMode+'">범위 골라 다시 풀기</button><button class="pill" data-act="recList" aria-pressed="'+recList+'">목록으로 보기</button></div>';
+    if(selMode)b+='<p class="sub" id="selHint">'+(recList?'범위는 답안지 모양에서 고릅니다. “목록으로 보기”를 끄세요.':'시작할 칸과 끝낼 칸을 차례로 누르세요. 날짜 옆의 “이 날 전체”를 눌러도 됩니다.')+'</p>';
+    b+='</div>';
+    if(recList){b+='<div class="rows">';
     var last='',from=Math.max(0,n-recShown);
     for(var i=n-1;i>=from;i--){var e=LOG[i],q=qBy(e[1]),dt=fmt(new Date(e[0]));
       if(dt!==last){last=dt;var dayAll=LOG.filter(function(x){return fmt(new Date(x[0]))===dt;});
@@ -1850,7 +1873,19 @@ function vRecords(){var h='<div class="head"><h1>기록</h1></div>',b='',n=LOG.l
       b+='<button data-act="peek" data-i="'+i+'"'+(q?'':' disabled')+'><span class="mk">'+(e[3]?circle(24):slash(24))+'<span class="sr">'+(e[3]?'정답':'오답')+'</span></span><span class="item"><small class="num">'+tm+' '+esc(q?q.subj+' '+(q.unit||''):'지워진 문제')+'</small><span>'+esc(q?first(q):'문제를 찾을 수 없습니다')+'</span></span>'+st+'</button>';}
     b+='</div>';
     if(from>0)b+='<button class="btn quiet sm" style="margin-top:14px" data-act="more">이전 기록 더 보기</button>';}
+    else{
+      // 답안지(OMR) 모양: 날짜마다 푼 순서대로 번호와 채점 표시(동그라미 = 맞음, 빗금 = 틀림). 최근 날짜가 위에 온다.
+      var days=[],byDay={};LOG.forEach(function(e,i){var dt=fmt(new Date(e[0]));if(!byDay[dt]){byDay[dt]={t:e[0],from:i,to:i,ok:0};days.push(byDay[dt]);}byDay[dt].to=i;if(e[3])byDay[dt].ok++;});
+      days.reverse().forEach(function(dy){var cnt=dy.to-dy.from+1;
+        b+='<div class="row between dayh" style="min-height:44px"><span class="sub" style="font-weight:800">'+esc(dayText(dy.t))+' <span class="num">'+dy.ok+'/'+cnt+' 정답</span></span>'+(selMode?'<button class="pill" data-act="selDay" data-a="'+dy.from+'" data-b="'+dy.to+'">이 날 전체</button>':'')+'</div><div class="omr">';
+        for(var i=dy.from;i<=dy.to;i++){var e=LOG[i],ok=!!e[3],has=!!qBy(e[1]),on=rg&&i>=rg[0]&&i<=rg[1];
+          b+='<button class="oc'+(on?' sel':'')+'" data-act="'+(selMode?'selCell':'peek')+'" data-i="'+i+'"'+(has?'':' disabled')+(selMode?' aria-pressed="'+!!on+'"':'')+' aria-label="'+(i-dy.from+1)+'번 '+(ok?'맞음':'틀림')+(has?'':' (지워진 문제)')+'"><small class="num">'+(i-dy.from+1)+'</small>'+(ok?circle(22):slash(22))+'</button>';}
+        b+='</div>';});
+      b+='<p class="sub">동그라미는 맞은 문제, 빗금은 틀린 문제입니다. 칸을 누르면 그때의 문제와 내 답을 볼 수 있습니다.</p>';}
+  }
   h+=sheet('풀이 기록',n?'<span class="kind num">'+n+'번</span>':'',b);
+  if(rg){var all=pickFromLog(rg[0],rg[1],false).length,wr=pickFromLog(rg[0],rg[1],true).length;
+    h+='<div class="selbar" id="selBar" role="status"><span class="sub num" style="font-weight:800;color:var(--ink)">'+(rg[1]-rg[0]+1)+'칸 선택 · 문제 '+all+'개 · 틀린 문제 '+wr+'개</span><div class="row"><button class="btn sm" data-act="selWrong"'+(wr?'':' disabled')+'>틀린 것만 풀기</button><button class="btn quiet sm" data-act="selAll"'+(all?'':' disabled')+'>모두 다시 풀기</button></div><button class="btn quiet sm" data-act="selMode">선택 그만하기</button></div>';}
   b='';
   if(!CH.length){b='<p class="body">강사와 나눈 대화가 여기에 남습니다.</p>';}
   else{b='<div class="rows">'+CH.map(function(c){var q=c.ctxId?qBy(c.ctxId):null;
@@ -1859,9 +1894,23 @@ function vRecords(){var h='<div class="head"><h1>기록</h1></div>',b='',n=LOG.l
   if(CONN&&!HAS_CLAUDE)h+=sheet('AI 강사','<span class="ai">AI</span>','<p class="body" style="margin-bottom:12px">'+esc(PROV[CONN.p].name)+'에 연결되어 있습니다. <span class="sub num">모델 '+esc(CONN.m)+'</span></p><button class="btn quiet sm" data-act="forgetKey">연결 끊기 (API 키 지우기)</button>');
   h+='<p class="sub" style="text-align:center">'+(DOC?'기록은 계정에 저장됩니다':'기록은 이 기기에 저장됩니다')+'</p>';
   return h;}
+// 강사와 이야기하는 동안 그 문제를 계속 볼 수 있게 한다. 아직 채점하지 않은 문제는 정답을 드러내지 않는다.
+function ctxCard(q){var parts=String(q.q).split(/\n\s*\n/),stem=parts.shift(),pass=parts.join('\n\n');
+  var live=sess&&!sess.done&&cur()&&cur().id===q.id,hide=live&&!sess.graded,pick=live?sess.pick:null;
+  var h='<details class="sheet exam ctxq" id="ctxBox"'+(ctxOpen?' open':'')+'><summary><span class="chev" style="display:flex">'+svg(I.chev,18)+'</span><span style="white-space:nowrap">함께 보는 문제</span><span class="t">'+esc(first(q))+'</span></summary>';
+  h+='<header class="sh"><b class="subj">'+esc(q.subj)+'</b><span class="unit">'+esc(q.unit||'')+'</span>'+(q.past?'<span class="kind">'+esc(q.src)+'</span>':'')+'</header>';
+  h+='<div class="qrow"><p class="stem">'+rich(stem)+'</p></div>';
+  if(pass)h+='<div class="passage">'+rich(pass)+'</div>';
+  h+='<div class="opts">'+q.opts.map(function(o,i){var cls='opt',m='';
+    if(!hide){if(i===q.ans){cls+=' right';m='정답';}else if(i===pick){cls+=' wrong';m='내 답';}}
+    else if(i===pick){cls+=' sel';m='고른 답';}
+    return '<div class="'+cls+'"><span class="n">'+(i+1)+'</span><span class="t">'+rich(o)+'</span>'+(m?'<span class="m">'+m+'</span>':'')+'</div>';}).join('')+'</div>';
+  if(hide)h+='<p class="sub" style="margin-top:10px">아직 채점하지 않은 문제라 정답은 가려 두었습니다.</p>';
+  h+='<button class="btn quiet sm" style="margin-top:12px" data-act="ctxClear">이 문제 내려놓기</button></details>';
+  return h;}
 function vTutor(){var q=ctxId?qBy(ctxId):null,h='';
   h+='<div class="head"><div class="col" style="gap:2px"><h1 style="white-space:nowrap">강사</h1>'+connChip()+'</div><div class="row" style="gap:6px">'+(chat.length?'<button class="pill" data-act="newChat">새 대화</button>':'')+(canSpeak()?'<button class="pill" data-act="voice" aria-pressed="'+(!!S.voiceOut)+'" aria-label="답을 소리로 듣기">'+svg(I.spk,18)+'소리</button>':'')+'</div></div>';
-  if(q)h+='<div class="ctx"><span>함께 보는 문제: '+esc(first(q))+'</span><button class="icon-btn" data-act="ctxClear" aria-label="이 문제 내려놓기">'+svg(I.x,18)+'</button></div>';
+  if(q)h+=ctxCard(q);
   if(!AI&&!HAS_CLAUDE)h+=keyCard();
   h+='<div class="chat" id="chat">';
   if(!chat.length){h+='<div class="msg a">안녕하세요. 개념을 물으면 답을 바로 알려 주기보다 질문으로 함께 풀어 갑니다. 급할 때는 “그냥 알려 주세요”라고 하세요.</div>';
@@ -2160,6 +2209,13 @@ var act={
     sess={title:'기록',ids:[q.id],idx:0,pick:e[2],conf:'sure',graded:true,ok:!!e[3],msg:'',prev:null,right:0,log:[],done:false,pop:false,w:0,kind:{},peek:true,when:e[0]};go('quiz');},
   retry:function(){var q=cur();if(q)startSession('다시 풀기',[q.id]);},
   more:function(){recShown+=50;render();},
+  recList:function(){recList=!recList;render();},
+  selMode:function(){selMode=!selMode;selA=selB=null;render();},
+  selCell:function(t){var i=+t.dataset.i;if(selA==null||selB!=null){selA=i;selB=null;}else selB=i;render();},
+  selDay:function(t){selA=+t.dataset.a;selB=+t.dataset.b;render();},
+  retryWrong:function(){startSession('틀린 문제 다시 풀기',pickFromLog(0,LOG.length-1,true));},
+  selWrong:function(){var r=selRange();if(!r)return;var ids=pickFromLog(r[0],r[1],true);selMode=false;selA=selB=null;startSession('틀린 문제 다시 풀기',ids);},
+  selAll:function(){var r=selRange();if(!r)return;var ids=pickFromLog(r[0],r[1],false);selMode=false;selA=selB=null;startSession('다시 풀기',ids);},
   newChat:function(){if(busy)return;newChat();render();},
   openChat:function(t){if(busy)return;openChat(t.dataset.id);},
   delChat:function(t){delChat(t.dataset.id);toast('대화를 지웠습니다.');render();},
@@ -2208,7 +2264,7 @@ document.addEventListener('submit',function(e){e.preventDefault();
   else if(e.target.dataset.form==='chat'){var i=document.getElementById('chatIn');send(i.value);}
   else if(e.target.dataset.form==='key'){var ki=document.getElementById('keyIn');if(ki)keyDraft=ki.value;connectKey();}});
 document.addEventListener('input',function(e){if(e.target.id==='chatIn')draft=e.target.value;else if(e.target.id==='keyIn')keyDraft=e.target.value;else if(e.target.id==='genSubj')pickSubj=e.target.value;else if(e.target.id==='genN')genN=+e.target.value||5;else if(e.target.id==='pasteIn')pasteDraft=e.target.value;});
-document.addEventListener('toggle',function(e){if(e.target.id==='addBox')addOpen=e.target.open;else if(e.target.id==='pastBox')pastOpen=e.target.open;},true);
+document.addEventListener('toggle',function(e){if(e.target.id==='addBox')addOpen=e.target.open;else if(e.target.id==='pastBox')pastOpen=e.target.open;else if(e.target.id==='ctxBox')ctxOpen=e.target.open;},true);
 window.addEventListener('hashchange',function(){var v=location.hash.replace('#','');if(VIEWS.indexOf(v)>=0&&v!==view){view=v;render();window.scrollTo(0,0);}});
 function dictShow(){var v=[dictBase,dictFinal,dictPart].filter(Boolean).join(' ');draft=v;var i=document.getElementById('chatIn');if(i)i.value=v;}
 
