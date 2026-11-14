@@ -205,7 +205,7 @@ ok(d6.querySelector('h1').textContent==='문제풀이'&&d6.querySelector('#addBo
 // 공부할 과목 고르기: 한 과목만, 또는 몇 과목만
 const w7=makeDom([],{mode:'ok',errors:[]},[],x=>x.localStorage.setItem('nurse8-state-v1',JSON.stringify({v:1,subjects:['국어','영어','없는과목'],prog:{},custom:[],updatedAt:1}))).window;await wait(50);
 const d7=w7.document,q7=s=>d7.querySelector(s),c7=el=>el.dispatchEvent(new w7.MouseEvent('click',{bubbles:true}));
-ok(w7.__app.state().subjects.join()==='국어,영어'&&/국어·영어/.test(q7('#goalNote').textContent),'two subjects selected, shown on home');
+ok(w7.__app.state().subjects.join()==='국어,영어'&&/국어, 영어/.test(q7('#goalNote').textContent),'two subjects selected, shown on home');
 c7(q7('[data-act="today"]'));
 ok(w7.__app.sess().ids.length===10&&w7.__app.sess().ids.every(id=>/^[ke]/.test(id)),'today set only has the selected subjects');
 c7(q7('[data-act="quit"]'));

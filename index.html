@@ -48,12 +48,13 @@ p{margin:0}
 .col{display:flex;flex-direction:column;gap:10px}
 .sub{color:var(--sub);font-size:13px}
 .grow{flex:1;min-width:0}
+.nw{white-space:nowrap}
 
 .head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
 /* 종이 한 장. 평소에는 선 없이 흰 종이와 제목만 두고, 문제 화면(.exam)에서만 시험지의 굵은 머리줄을 쓴다. */
 .sheet{background:var(--card);border-radius:6px;padding:18px 18px 18px}
 .sh{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.sh .subj{flex:1;min-width:0;font-size:17px;font-weight:800}
+.sh .subj{flex:1 0 auto;font-size:17px;font-weight:800;white-space:nowrap}
 .sh .unit{font-size:13px;font-weight:600;color:var(--sub);text-align:right}
 .sh .kind{padding:3px 8px;border-radius:4px;background:var(--paper);color:var(--sub);font-size:12px;font-weight:800;white-space:nowrap}
 .sheet.exam{border:1px solid var(--line2);border-radius:4px;padding:14px 18px 16px}
@@ -120,7 +121,7 @@ p{margin:0}
 .split .n{background:var(--pen)}
 .legend{display:flex;gap:16px;font-size:13px;color:var(--sub)}
 .legend b{color:var(--ink);font-family:var(--exam)}
-.omrk{gap:10px;align-items:center}
+.omrk{gap:10px;align-items:center;justify-content:flex-end}
 .omrk span{display:inline-flex;align-items:center;gap:2px}
 .omrk svg{color:var(--no)}
 .dot{display:inline-block;width:8px;height:8px;margin-right:6px}
@@ -152,6 +153,10 @@ p{margin:0}
 .opt.dim .n{border-color:var(--sub)}
 .aibox{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line2)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips.g2{display:grid;grid-template-columns:1fr 1fr}
+.chips.g1{display:grid;grid-template-columns:1fr}
+.chips.g2 > *{justify-content:center}
+.chips.g1 > *{justify-content:flex-start}
 .steps{margin:0;padding-left:22px;font-family:var(--exam);font-size:15px;font-weight:500;line-height:1.75}
 .steps li{padding:2px 0}
 a.btn{text-decoration:none}
@@ -215,6 +220,7 @@ details[open] > summary .chev{transform:rotate(90deg)}
 .oc:disabled{opacity:.45}
 .oc.sel{border-color:var(--ink);background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--ink)}
 .oc.sel small{color:var(--ink)}
+.selbar .btn{padding:0 10px;white-space:nowrap}
 .selbar{position:sticky;bottom:72px;margin:0 -20px;padding:10px 20px 12px;background:var(--paper);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;z-index:3}
 .chat{display:flex;flex-direction:column;gap:12px;flex:1}
 .msg{max-width:90%;padding:12px 14px;border-radius:4px;white-space:pre-wrap}
@@ -259,7 +265,7 @@ u{text-underline-offset:4px}
 <header class="sh" style="margin:0"><b class="subj" id="dlgT">설정</b></header>
 <label class="col" for="examIn"><span class="sub">시험일</span><input class="field" type="date" id="examIn"></label>
 <label class="col" for="goalIn"><span class="sub">하루 새 문제</span><select class="field" id="goalIn"></select></label>
-<fieldset class="col" style="gap:8px;border:0;margin:0;padding:0"><legend class="sub" style="padding:0;margin-bottom:6px">과목</legend><div class="chips" id="subjIn"></div></fieldset>
+<fieldset class="col" style="gap:8px;border:0;margin:0;padding:0"><legend class="sub" style="padding:0;margin-bottom:6px">과목</legend><div class="chips g1" id="subjIn"></div></fieldset>
 <div class="row"><button type="button" class="btn quiet sm" data-act="dlgClose">취소</button><button type="submit" class="btn sm">저장</button></div>
 </form>
 </dialog>
@@ -1649,7 +1655,7 @@ function day(n){var d=new Date();d.setDate(d.getDate()+(n||0));return fmt(d);}
 function allQ(){return BANK.concat(S.custom);}
 function allSubj(){return S.subjects.length===SUBJ.length;}
 function myQ(){if(allSubj())return allQ();return allQ().filter(function(q){return S.subjects.indexOf(q.subj)>=0;});}
-function subjText(){return allSubj()?'전 과목':S.subjects.join('·');}
+function subjText(){var a=S.subjects;return allSubj()?'전 과목':a.length<3?a.join(', '):a[0]+' 외 '+(a.length-1)+'과목';}
 function qBy(id){var a=allQ().concat(PAST);for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
 // 기출 모음(PAST)은 오늘의 새 문제에는 넣지 않고 과목 화면에서 회분별로 푼다. 틀린 기출은 복습에 들어온다.
 function revQ(){return myQ().concat(PAST.filter(function(q){return S.subjects.indexOf(q.subj)>=0;}));}
@@ -1685,7 +1691,7 @@ var VIEWS=['home','quiz','review','tutor','records'],recShown=30;
 var view='home',sess=null,chat=[],ctxId=null,draft='',busy=false,pastOpen=false,ctxOpen=true,recList=false,selMode=false,selA=null,selB=null,job=null,genN=5,qSeq=0,chatTask=null,keyTask=null,pickSubj=SUBJ[0],pasteDraft='',addOpen=false;
 var AI=null,D=null,TTS=null,listening=false,dictBase='',dictFinal='',dictPart='';
 // 화면이 새로 배포됐는지 확인하는 용도. 앱을 고칠 때마다 올린다(작은 수정은 끝자리, 기능 추가는 가운데 자리).
-var VERSION='1.16.0';
+var VERSION='1.16.1';
 var KEYLS='nurse8-key-v1',CONN=null,MODEL='claude-opus-5-5',HAS_CLAUDE=!!(window.claude&&typeof window.claude.use==='function');
 var keyProv='gemini',keyDraft='',keyBusy=false,keyMsg='';
 var app=document.getElementById('app'),nav=document.getElementById('nav');
@@ -1708,9 +1714,9 @@ function schedule(q,ok,c,prev){var t=day(0),msg='';
   var was=inLadder(p),due=was&&p.due<=t;
   p.seen++;
   if(!ok){p.wrong++;p.stage=0;p.due=day(1);p.last='wrong';msg='내일 복습';}
-  else if(c==='guess'){p.stage=0;p.due=day(1);p.last='guess';msg='찍음 · 내일 복습';}
-  else if(c==='unsure'&&!was){p.stage=1;p.due=day(3);p.last='unsure';msg='헷갈림 · 3일 뒤 복습';}
-  else if(c==='unsure'&&due){p.last='unsure';p.due=day(INTERVALS[p.stage]);msg='헷갈림 · '+INTERVALS[p.stage]+'일 뒤 복습';}
+  else if(c==='guess'){p.stage=0;p.due=day(1);p.last='guess';msg='내일 복습';}
+  else if(c==='unsure'&&!was){p.stage=1;p.due=day(3);p.last='unsure';msg='3일 뒤 복습';}
+  else if(c==='unsure'&&due){p.last='unsure';p.due=day(INTERVALS[p.stage]);msg=INTERVALS[p.stage]+'일 뒤 복습';}
   else if(due){p.stage++;p.last='correct';
     if(p.stage>=4){p.stage=4;p.due=null;msg='복습 완료';}
     else{p.due=day(INTERVALS[p.stage]);msg=INTERVALS[p.stage]+'일 뒤 복습';}}
@@ -1756,7 +1762,7 @@ function subjRows(){return SUBJ.map(function(s){var qs=allQ().filter(function(q)
 function sheet(title,side,body,attr){return '<section class="sheet"'+(attr||'')+'><header class="sh"><b class="subj">'+title+'</b>'+(side||'')+'</header>'+body+'</section>';}
 function vHome(){var p=todayPlan(),n=p.left,did=S.days[day(0)]||0,h='',b='';
   h+='<div class="head"><h1>오늘의 학습</h1><button class="pill" data-act="exam">'+esc(dday())+'</button></div>';
-  var goalRow='<div class="row between" style="min-height:44px"><span class="sub num" id="goalNote">'+esc(subjText())+' · 하루 새 문제 '+S.goal+'개</span><button class="pill" data-act="exam">설정</button></div>';
+  var goalRow='<div class="row between" style="min-height:44px"><span class="col sub num" id="goalNote" style="gap:2px"><span>'+esc(subjText())+'</span><span class="nw">하루 새 문제 '+S.goal+'개</span></span><button class="pill" data-act="exam">설정</button></div>';
   if(n){
     b+='<div class="col" style="gap:14px"><div class="big num">'+n+'<small>문제</small></div>';
     b+='<div class="col" style="gap:8px"><div class="split" role="img" aria-label="복습 '+p.due.length+'문제, 새 문제 '+p.newLeft+'문제">'+(p.due.length?'<i class="r" style="flex:'+p.due.length+'"></i>':'')+(p.newLeft?'<i class="n" style="flex:'+p.newLeft+'"></i>':'')+'</div>';
@@ -1794,10 +1800,10 @@ function vQuiz(){
     h+='<div class="foot"><div class="row"><button class="sq" data-act="askq" aria-label="이 문제를 강사에게 묻기">'+svg(I.chat)+'</button><button class="btn" data-act="grade"'+(sess.pick==null?' disabled':'')+'>'+'채점하기'+'</button></div></div>';
     return h;}
   if(sess.ok&&!sess.peek){h+='<div class="col" style="gap:8px"><div class="chips" role="group" aria-label="확신이 없었다면"><button class="pill" data-act="conf" data-c="unsure" aria-pressed="'+(sess.conf==='unsure')+'">헷갈렸어요</button><button class="pill" data-act="conf" data-c="guess" aria-pressed="'+(sess.conf==='guess')+'">찍었어요</button></div></div>';}
-  h+='<section class="sheet exam"><header class="sh"><b class="subj">해설</b><span class="unit num">'+(q.ai?'AI 작성 · 오류 가능':q.past?'공식 정답 · AI 해설':seen(q)?seen(q)+'번 풀어 '+((S.prog[q.id]||{}).wrong||0)+'번 틀림':'')+'</span></header><p class="body">'+rich(q.exp||'해설이 없습니다.')+'</p>';
-  if(AI){h+='<div class="aibox"><div class="row" style="gap:8px"><h2>강사에게 묻기</h2><span class="ai">AI</span></div><div class="chips"><button class="pill" data-act="ask" data-p="easy">쉽게 설명</button><button class="pill" data-act="ask" data-p="opts">선지별 해설</button><button class="pill" data-act="ask" data-p="concept">관련 개념</button><button class="pill" data-act="similar"'+(job?' disabled':'')+'>'+(job?'만드는 중…':'유사 문제')+'</button></div></div>';}
+  h+='<section class="sheet exam"><header class="sh"><b class="subj">해설</b>'+(q.ai?'<span class="unit nw">오류 가능</span><span class="kind">AI 작성</span>':q.past?'<span class="unit nw">공식 정답</span><span class="kind">AI 해설</span>':'<span class="unit num nw">'+(seen(q)?seen(q)+'번 풀어 '+((S.prog[q.id]||{}).wrong||0)+'번 틀림':'')+'</span>')+'</header><p class="body">'+rich(q.exp||'해설이 없습니다.')+'</p>';
+  if(AI){h+='<div class="aibox"><div class="row" style="gap:8px"><h2>강사에게 묻기</h2><span class="ai">AI</span></div><div class="chips g2"><button class="pill" data-act="ask" data-p="easy">쉽게 설명</button><button class="pill" data-act="ask" data-p="opts">선지별 해설</button><button class="pill" data-act="ask" data-p="concept">관련 개념</button><button class="pill" data-act="similar"'+(job?' disabled':'')+'>'+(job?'만드는 중…':'유사 문제')+'</button></div></div>';}
   h+='</section>';
-  if(sess.peek){h+='<div class="foot"><p class="sub num">'+esc(whenText(sess.when))+' · 내 답 '+(sess.pick+1)+'번</p><div class="row"><button class="btn quiet" data-act="quit">'+(sess.back?'결과로':'목록으로')+'</button><button class="btn" data-act="retry">다시 풀기</button></div></div>';return h;}
+  if(sess.peek){h+='<div class="foot"><p class="row between sub num"><span class="nw">'+esc(whenText(sess.when))+'</span><span class="nw">내 답 '+(sess.pick+1)+'번</span></p><div class="row"><button class="btn quiet" data-act="quit">'+(sess.back?'결과로':'목록으로')+'</button><button class="btn" data-act="retry">다시 풀기</button></div></div>';return h;}
   var a=(q.ans+1)+'번 '+plain(q.opts[q.ans]);
   h+='<div class="foot '+(sess.ok?'good':'bad')+(sess.pop?' pop':'')+'" role="status"><div class="verdict"><span class="ic">'+svg(sess.ok?I.ok:I.x,18,3)+'</span><div><b>'+(sess.ok?'정답입니다':'정답은 <mark>'+esc(a)+'</mark>')+'</b>'+(sess.msg?'<span>'+esc(sess.msg)+'</span>':'')+'</div></div>';
   h+='<button class="btn" data-act="next">'+(sess.idx+1>=n?'결과 보기':'다음 문제')+'</button></div>';
@@ -1805,7 +1811,7 @@ function vQuiz(){
 function vDone(){var n=sess.ids.length,r=sess.right,wrong=sess.log.filter(function(x){return !x.ok;}),h='',b='';
   h+='<div class="head"><h1>'+(r===n?'모두 맞혔습니다':'채점 결과')+'</h1></div>';
   b+='<div class="col" style="gap:14px"><div class="score num" role="img" aria-label="'+n+'문제 중 '+r+'문제 정답">'+r+'<small>/'+n+'</small><svg aria-hidden="true" viewBox="0 0 120 16" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 5c30-3 80-3 112 0M10 12c30-3 70-3 100 0"/></svg></div>';
-  b+=(wrong.length?'<p class="body num" style="text-align:center">틀린 문제 '+wrong.length+'개 · 내일 복습</p>':'')+'</div>';
+  b+=(wrong.length?'<p class="body" style="text-align:center">틀린 문제는 내일 복습합니다.</p>':'')+'</div>';
   h+=sheet(esc(sess.title),'<span class="kind">'+n+'문제</span>',b);
   if(wrong.length){h+=sheet('틀린 문제','<span class="kind num">'+wrong.length+'문제</span>','<div class="rows">'+wrong.map(function(x){var q=qBy(x.id);if(!q)return '';
     return '<button data-act="peekw" data-id="'+esc(q.id)+'"><span class="item"><small>'+esc(q.subj)+' '+esc(q.unit||'')+'</small><span>'+esc(first(q))+'</span></span>'+svg(I.chev,18)+'</button>';}).join('')+'</div>');}
@@ -1848,7 +1854,7 @@ function vReview(){var cnt=[0,0,0,0,0];revQ().forEach(function(q){var p=S.prog[q
   var later=revQ().filter(function(q){var p=S.prog[q.id];return inLadder(p)&&p.due>day(0);}).length;
   if(later)h+='<p class="sub num" style="text-align:center">복습 예정 '+later+'문제</p>';
   return h;}
-function dayText(t){var d=new Date(t);return (d.getMonth()+1)+'월 '+d.getDate()+'일 '+'일월화수목금토'.charAt(d.getDay())+'요일';}
+function dayText(t){var d=new Date(t);return (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+'일월화수목금토'.charAt(d.getDay())+')';}
 function whenText(t){var d=new Date(t);return dayText(t)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function slash(sz){return '<svg aria-hidden="true" width="'+sz+'" height="'+sz+'" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M8 34L32 6"/></svg>';}
 // 기록에서 다시 풀 문제를 고른다. from~to 는 LOG 의 자리(포함). 같은 문제를 여러 번 풀었으면 그 범위의 마지막 결과를 본다.
@@ -1861,7 +1867,8 @@ function vRecords(){var h='<div class="head"><h1>기록</h1></div>',b='',n=LOG.l
   if(!n){b='<p class="body">푼 문제가 없습니다.</p>';}
   else{var wrongAll=pickFromLog(0,n-1,true).length;
     b='<div class="col" style="gap:10px;margin-bottom:12px"><button class="btn sm" data-act="retryWrong"'+(wrongAll?'':' disabled')+'>'+(wrongAll?'틀린 문제 '+wrongAll+'개 다시 풀기':'틀린 문제 없음')+'</button>';
-    b+='<div class="chips"><button class="pill" data-act="selMode" aria-pressed="'+selMode+'">범위 선택</button><button class="pill" data-act="recList" aria-pressed="'+recList+'">목록 보기</button><span class="grow"></span><span class="legend omrk"><span>'+circle(16)+'정답</span><span>'+slash(16)+'오답</span></span></div>';
+    b+='<div class="chips g2"><button class="pill" data-act="selMode" aria-pressed="'+selMode+'">범위 선택</button><button class="pill" data-act="recList" aria-pressed="'+recList+'">목록 보기</button></div>';
+    b+='<div class="legend omrk"><span>'+circle(16)+'맞음</span><span>'+slash(16)+'틀림</span></div>';
     if(selMode&&!rg)b+='<p class="sub" id="selHint">시작 번호와 끝 번호를 누르세요.</p>';
     b+='</div>';
     if(recList){b+='<div class="rows">';
@@ -1878,21 +1885,21 @@ function vRecords(){var h='<div class="head"><h1>기록</h1></div>',b='',n=LOG.l
       // 답안지(OMR) 모양: 날짜마다 푼 순서대로 번호와 채점 표시(동그라미 = 맞음, 빗금 = 틀림). 최근 날짜가 위에 온다.
       var days=[],byDay={};LOG.forEach(function(e,i){var dt=fmt(new Date(e[0]));if(!byDay[dt]){byDay[dt]={t:e[0],from:i,to:i,ok:0};days.push(byDay[dt]);}byDay[dt].to=i;if(e[3])byDay[dt].ok++;});
       days.reverse().forEach(function(dy){var cnt=dy.to-dy.from+1;
-        b+='<div class="row between dayh" style="min-height:44px"><span class="sub" style="font-weight:800">'+esc(dayText(dy.t))+' <span class="num">'+dy.ok+'/'+cnt+' 정답</span></span>'+(selMode?'<button class="pill" data-act="selDay" data-a="'+dy.from+'" data-b="'+dy.to+'">전체 선택</button>':'')+'</div><div class="omr">';
+        b+='<div class="row between dayh" style="min-height:44px"><span class="sub nw" style="font-weight:800">'+esc(dayText(dy.t))+'</span>'+(selMode?'<button class="pill" data-act="selDay" data-a="'+dy.from+'" data-b="'+dy.to+'">전체 선택</button>':'<span class="sub num nw" style="font-weight:800">'+dy.ok+'/'+cnt+' 정답</span>')+'</div><div class="omr">';
         for(var i=dy.from;i<=dy.to;i++){var e=LOG[i],ok=!!e[3],has=!!qBy(e[1]),on=rg&&i>=rg[0]&&i<=rg[1];
           b+='<button class="oc'+(on?' sel':'')+'" data-act="'+(selMode?'selCell':'peek')+'" data-i="'+i+'"'+(has?'':' disabled')+(selMode?' aria-pressed="'+!!on+'"':'')+' aria-label="'+(i-dy.from+1)+'번 '+(ok?'맞음':'틀림')+(has?'':' (삭제된 문제)')+'"><small class="num">'+(i-dy.from+1)+'</small>'+(ok?circle(22):slash(22))+'</button>';}
         b+='</div>';});
     }
   }
-  h+=sheet('풀이 기록',n?'<span class="kind num" id="recStat">'+n+'문제 · 정답률 '+Math.round(r/n*100)+'%</span>':'',b);
+  h+=sheet('풀이 기록',n?'<span class="unit num nw">'+n.toLocaleString('ko-KR')+'문제</span><span class="kind num" id="recStat">정답률 '+Math.round(r/n*100)+'%</span>':'',b);
   if(rg){var all=pickFromLog(rg[0],rg[1],false).length,wr=pickFromLog(rg[0],rg[1],true).length;
-    h+='<div class="selbar" id="selBar" role="status"><span class="sub num" style="font-weight:800;color:var(--ink)">'+all+'문제 선택 · 틀린 문제 '+wr+'개</span><div class="row"><button class="btn sm" data-act="selWrong"'+(wr?'':' disabled')+'>틀린 문제만 풀기</button><button class="btn quiet sm" data-act="selAll"'+(all?'':' disabled')+'>전체 풀기</button></div><button class="btn quiet sm" data-act="selMode">취소</button></div>';}
+    h+='<div class="selbar" id="selBar" role="status"><div class="row between sub num" style="font-weight:800;color:var(--ink)"><span class="nw">'+all+'문제 선택</span><span class="nw">틀린 문제 '+wr+'개</span></div><div class="row"><button class="btn sm" data-act="selWrong"'+(wr?'':' disabled')+'>틀린 문제 풀기</button><button class="btn quiet sm" data-act="selAll"'+(all?'':' disabled')+'>전체 풀기</button></div><button class="btn quiet sm" data-act="selMode">취소</button></div>';}
   b='';
   if(!CH.length){b='<p class="body">대화가 없습니다.</p>';}
   else{b='<div class="rows">'+CH.map(function(c){var q=c.ctxId?qBy(c.ctxId):null;
-    return '<div><button class="grow" data-act="openChat" data-id="'+esc(c.id)+'"><span class="item"><small class="num">'+esc(whenText(c.updatedAt))+(q?' '+esc(q.subj):'')+' · 메시지 '+c.msgs.length+'개</small><span>'+esc(c.title||'대화')+'</span></span></button><button class="icon-btn" data-act="delChat" data-id="'+esc(c.id)+'" aria-label="대화 삭제">'+svg(I.x,18)+'</button></div>';}).join('')+'</div>';}
+    return '<div><button class="grow" data-act="openChat" data-id="'+esc(c.id)+'"><span class="item"><small class="num">'+esc(whenText(c.updatedAt))+(q?' '+esc(q.subj):'')+'</small><span>'+esc(c.title||'대화')+'</span></span></button><button class="icon-btn" data-act="delChat" data-id="'+esc(c.id)+'" aria-label="대화 삭제">'+svg(I.x,18)+'</button></div>';}).join('')+'</div>';}
   h+=sheet('대화 기록',CH.length?'<span class="kind num">'+CH.length+'개</span>':'',b);
-  if(CONN&&!HAS_CLAUDE)h+=sheet('AI 강사','<span class="ai">AI</span>','<p class="body" style="margin-bottom:12px">'+esc(PROV[CONN.p].name)+' 연결됨 <span class="sub num">'+esc(CONN.m)+'</span></p><button class="btn quiet sm" data-act="forgetKey">연결 해제</button>');
+  if(CONN&&!HAS_CLAUDE)h+=sheet('AI 강사','<span class="ai">AI</span>','<p class="body">'+esc(PROV[CONN.p].name)+' 연결됨</p><p class="sub num" style="margin-bottom:12px">'+esc(CONN.m)+'</p><button class="btn quiet sm" data-act="forgetKey">연결 해제</button>');
   h+='<p class="sub" style="text-align:center">'+(DOC?'계정에 저장됩니다':'이 기기에만 저장됩니다')+'</p>';
   return h;}
 // 강사와 이야기하는 동안 그 문제를 계속 볼 수 있게 한다. 아직 채점하지 않은 문제는 정답을 드러내지 않는다.
@@ -1914,13 +1921,13 @@ function vTutor(){var q=ctxId?qBy(ctxId):null,h='';
   if(!AI&&!HAS_CLAUDE)h+=keyCard();
   h+='<div class="chat" id="chat">';
   if(!chat.length){h+='<div class="msg a">안녕하세요. 무엇이 궁금한가요?</div>';
-    if(AI)h+='<div class="chips">'+(q?'<button class="pill" data-act="quick" data-t="이 문제를 푸는 실마리를 알려 주세요.">이 문제 힌트 주세요</button>':'')+'<button class="pill" data-act="quick" data-t="[바로 답하기] 제가 자주 틀리는 단원을 중심으로 오늘 무엇을 공부하면 좋을지 알려 주세요.">오늘 뭘 공부할까요</button><button class="pill" data-act="quick" data-t="[개념 수업] 간호관리에서 자주 나오는 개념 하나를 골라 가르쳐 주세요.">간호관리 핵심 개념</button><button class="pill" data-act="quick" data-t="[개념 수업] 지역사회간호에서 자주 나오는 개념 하나를 골라 가르쳐 주세요.">지역사회간호 핵심 개념</button></div>';
+    if(AI)h+='<div class="chips g1">'+(q?'<button class="pill" data-act="quick" data-t="이 문제를 푸는 실마리를 알려 주세요.">이 문제 힌트 주세요</button>':'')+'<button class="pill" data-act="quick" data-t="[바로 답하기] 제가 자주 틀리는 단원을 중심으로 오늘 무엇을 공부하면 좋을지 알려 주세요.">오늘 뭘 공부할까요</button><button class="pill" data-act="quick" data-t="[개념 수업] 간호관리에서 자주 나오는 개념 하나를 골라 가르쳐 주세요.">간호관리 핵심 개념</button><button class="pill" data-act="quick" data-t="[개념 수업] 지역사회간호에서 자주 나오는 개념 하나를 골라 가르쳐 주세요.">지역사회간호 핵심 개념</button></div>';
     if(CH.length)h+='<button class="btn quiet sm" data-act="tab" data-v="records">지난 대화 '+CH.length+'개</button>';}
   chat.forEach(function(m,i){
     if(m.role==='note')h+='<div class="msg n">'+esc(m.content)+'</div>';
     else if(m.role==='user')h+='<div class="msg u">'+esc(m.show||m.content)+'</div>';
     else h+='<div class="msg a"'+(m.pending?' id="stream"':'')+'>'+(m.pending?(m.part?esc(m.part):'생각하는 중…'):esc(m.content))+(!m.pending&&canSpeak()?'<button class="again" data-act="say" data-i="'+i+'">'+svg(I.spk,18)+'<span>다시 듣기</span></button>':'')+'</div>';});
-  if(AI&&!busy&&chat.length)h+='<div class="chips"><button class="pill" data-act="quick" data-t="그냥 알려 주세요.">그냥 알려 주세요</button><button class="pill" data-act="quick" data-t="더 쉽게 물어봐 주세요.">더 쉽게</button><button class="pill" data-act="quick" data-t="더 어렵게 물어봐 주세요.">더 어렵게</button><button class="pill" data-act="quick" data-t="어디까지 왔나요?">어디까지 왔나요</button></div>';
+  if(AI&&!busy&&chat.length)h+='<div class="chips g2"><button class="pill" data-act="quick" data-t="그냥 알려 주세요.">그냥 알려 주세요</button><button class="pill" data-act="quick" data-t="더 쉽게 물어봐 주세요.">더 쉽게</button><button class="pill" data-act="quick" data-t="더 어렵게 물어봐 주세요.">더 어렵게</button><button class="pill" data-act="quick" data-t="어디까지 왔나요?">어디까지 왔나요</button></div>';
   h+='</div>';
   var st=dockStatus();
   h+='<div class="composer">'+(st?'<div class="status" id="dockS" role="status">'+esc(st)+'</div>':'<div id="dockS" class="status" hidden></div>');
@@ -1931,17 +1938,17 @@ function vTutor(){var q=ctxId?qBy(ctxId):null,h='';
 function connChip(){var st=keyBusy?['wait','연결 확인 중…']:HAS_CLAUDE?(AI?['on','Claude 연결됨']:['off','AI 준비 안 됨']):CONN?['on',PROV[CONN.p].short+' 연결됨']:['off','연결 안 됨'];
   return '<span class="conn '+st[0]+'" id="connChip">'+(st[0]==='wait'?'<span class="spin" aria-hidden="true"></span>':'<i class="cd"></i>')+esc(st[1])+'</span>';}
 function keyCard(){var P=PROV[keyProv],h='<div class="col" style="gap:14px">';
-  h+='<p class="body">AI 강사는 AI 회사의 서비스를 빌려 씁니다. 그 회사에서 <b>API 키</b>를 받아 여기에 붙여 넣으면 연결됩니다. API 키는 “이 앱이 내 이름으로 AI를 써도 된다”는 뜻의 긴 비밀번호입니다. 처음 한 번만 하면 되고 5분쯤 걸립니다. 기본 문제 풀이와 복습은 연결하지 않아도 됩니다.</p>';
-  h+='<h2>1. 어느 AI를 쓸지 고르세요</h2><div class="chips">'+PROVS.map(function(id){return '<button class="pill" data-act="prov" data-p="'+id+'" aria-pressed="'+(id===keyProv)+'"'+(keyBusy?' disabled':'')+'>'+esc(PROV[id].name)+'</button>';}).join('')+'</div><p class="sub">'+esc(P.note)+'</p>';
+  h+='<p class="body">AI 강사는 AI 회사의 서비스를 빌려 씁니다. 그 회사에서 <b class="nw">API 키</b>를 받아 여기에 붙여 넣으면 연결됩니다. API 키는 “이 앱이 내 이름으로 AI를 써도 된다”는 뜻의 긴 비밀번호입니다. 처음 한 번만 하면 되고 5분쯤 걸립니다. 기본 문제 풀이와 복습은 연결하지 않아도 됩니다.</p>';
+  h+='<h2>1. 어느 AI를 쓸지 고르세요</h2><div class="chips g1">'+PROVS.map(function(id){return '<button class="pill" data-act="prov" data-p="'+id+'" aria-pressed="'+(id===keyProv)+'"'+(keyBusy?' disabled':'')+'>'+esc(PROV[id].name)+'</button>';}).join('')+'</div><p class="sub">'+esc(P.note)+'</p>';
   h+='<h2>2. '+esc(P.site)+'에서 키를 받으세요</h2><ol class="steps">'+P.steps.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ol>';
-  h+='<a class="btn quiet sm" href="'+P.url+'" target="_blank" rel="noopener">'+esc(P.site)+' 열기 (새 창)</a>';
+  h+='<a class="btn quiet sm" href="'+P.url+'" target="_blank" rel="noopener" aria-label="'+esc(P.site)+' 열기 (새 창)">'+esc(P.site)+' 열기</a>';
   h+='<h2>3. 복사한 키를 붙여 넣으세요</h2><form data-form="key" class="col" style="gap:12px">';
   h+='<input class="field" id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="'+P.ph+'" aria-label="'+esc(P.name)+' API 키" value="'+esc(keyDraft)+'">';
   if(keyMsg)h+='<p class="sub warn" id="keyMsg" role="alert">'+esc(keyMsg)+'</p>';
   if(keyBusy)h+='<p class="sub wait" id="keyWait"><span class="spin" aria-hidden="true"></span><span>'+esc(P.name)+'에 키를 확인하는 중입니다. 보통 몇 초면 끝납니다.</span></p><button class="btn quiet" type="button" data-act="keyCancel">취소</button></form>';
   else h+='<button class="btn" type="submit">연결하기</button></form>';
   h+='<p class="sub">키는 이 기기의 브라우저에만 저장되고, 고른 AI 회사로만 보냅니다. 비밀번호처럼 남에게 보여 주지 마세요. 여러 사람이 쓰는 기기에서는 넣지 마세요. 연결은 기록 탭에서 언제든 해제할 수 있습니다.</p></div>';
-  return sheet('AI 강사 연결하기','<span class="ai">AI</span>',h);}
+  return sheet('AI 강사 연결하기','<span class="ai">AI</span>',h,' id="keyCard"');}
 function dockStatus(){if(!AI)return HAS_CLAUDE?'AI 강사를 쓸 수 없습니다.':'AI 연결이 필요합니다.';
   if(listening)return '듣는 중… 마이크를 다시 누르면 보냅니다.';
   if(busy)return '답변 중…';
@@ -1985,7 +1992,7 @@ var PROVS=['gemini','anthropic','openai'];
 var PROV={
 gemini:{name:'Google Gemini',short:'Gemini',site:'Google AI Studio',url:'https://aistudio.google.com/app/apikey',ph:'여기에 붙여넣기',
   note:'구글 계정(지메일)만 있으면 되고 카드 등록 없이 무료 한도 안에서 쓸 수 있어, 처음이라면 이쪽을 권합니다. 한도는 구글이 정하며 바뀔 수 있습니다. 무료로 쓸 때 보낸 내용은 구글이 서비스 개선에 쓸 수 있습니다.',
-  steps:['키는 Gemini 앱이 아니라 “Google AI Studio”라는 다른 사이트에서 받습니다. 아래 “Google AI Studio 열기”를 누르고 구글 계정으로 로그인합니다.','처음이면 약관에 동의하라는 창이 나옵니다. 동의하고 넘어갑니다.','API 키 화면에서 “Create API key”(API 키 만들기) 버튼을 누릅니다.','프로젝트를 고르라고 하면 있는 것을 고르거나 새로 만듭니다. 이름은 아무렇게나 해도 됩니다.','만들어진 키(긴 영문·숫자)를 복사합니다.','이 화면으로 돌아와 아래 칸을 길게 눌러 “붙여넣기”를 한 뒤 “연결하기”를 누릅니다.'],
+  steps:['키는 Gemini 앱이 아니라 “Google AI Studio”라는 다른 사이트에서 받습니다. 아래 “Google AI Studio 열기”를 누르고 구글 계정으로 로그인합니다.','처음이면 약관에 동의하라는 창이 나옵니다. 동의하고 넘어갑니다.','API 키 화면에서 “Create API key”(API 키 만들기) 버튼을 누릅니다.','프로젝트를 고르라고 하면 있는 것을 고르거나 새로 만듭니다. 이름은 아무렇게나 해도 됩니다.','만들어진 키(긴 영문과 숫자)를 복사합니다.','이 화면으로 돌아와 아래 칸을 길게 눌러 “붙여넣기”를 한 뒤 “연결하기”를 누릅니다.'],
   pick:function(k,sig){return req('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000',{headers:{'x-goog-api-key':k},signal:sig}).then(function(r){return r.json();}).then(function(j){
       var ids=(j&&j.models||[]).filter(function(m){return (m.supportedGenerationMethods||[]).indexOf('generateContent')>=0;}).map(function(m){return String(m.name||'').replace(/^models\//,'');});
       var m=newest(ids,/^gemini-(\d+(?:\.\d+)?)-flash$/)||(ids.indexOf('gemini-flash-latest')>=0?'gemini-flash-latest':'')||newest(ids,/^gemini-(\d+(?:\.\d+)?)-pro$/);
@@ -2046,7 +2053,7 @@ function keyErr(e,p){var c=e&&e.code;
     c==='no_credit'?'키는 맞지만 충전된 금액이 없습니다. '+PROV[p].site+'의 Billing(결제) 메뉴에서 충전한 뒤 다시 눌러 주세요.':
     c==='forbidden'?'이 키로는 AI를 쓸 수 없다고 합니다. '+PROV[p].site+'에서 키를 새로 만들어 주세요.':aiErr(e);}
 function connectKey(){if(keyBusy)return;var k=keyDraft.replace(/["'\s]/g,'');
-  if(k.length<20){keyMsg='키를 붙여 넣어 주세요. 키는 수십 자짜리 긴 영문·숫자입니다.';render();return;}
+  if(k.length<20){keyMsg='키를 붙여 넣어 주세요. 키는 수십 자짜리 긴 영문과 숫자입니다.';render();return;}
   // 키 모양으로 회사를 알 수 있으면 고른 것과 달라도 맞춰 준다.
   var p=/^sk-ant-/.test(k)?'anthropic':/^AIza/.test(k)?'gemini':/^sk-/.test(k)?'openai':keyProv;
   keyProv=p;keyBusy=true;keyMsg='';render();
@@ -2245,7 +2252,7 @@ var act={
   keyCancel:function(){if(keyTask)keyTask.cancel();},
   clearCustom:function(){var ids=S.custom.map(function(q){return q.id;});S.custom=[];ids.forEach(function(i){delete S.prog[i];});save();toast('추가한 문제를 삭제했습니다.');render();},
   ctxClear:function(){ctxId=null;render();},
-  forgetKey:function(){setConn(null);toast('연결을 해제하고 API 키를 삭제했습니다.');render();},
+  forgetKey:function(){setConn(null);toast('연결을 해제했습니다.');render();},
   prov:function(t){if(keyBusy||!PROV[t.dataset.p])return;keyProv=t.dataset.p;keyMsg='';render();},
   quick:function(t){send(t.dataset.t,t.textContent);},
   say:function(t){var m=chat[+t.dataset.i];if(m)speak(m.content);},
