@@ -85,8 +85,8 @@ ok($('h1').textContent==='기록'&&$$('[data-act="peek"]').length===3&&$$('[data
 ok($$('.omr .oc').length===3&&$$('.omr .oc small').map(x=>x.textContent).join()==='1,2,3'&&/틀림/.test($$('.omr .oc')[0].getAttribute('aria-label'))&&/맞음/.test($$('.omr .oc')[2].getAttribute('aria-label')),'answer-sheet grid: numbered cells with right/wrong marks');
 ok($('[data-act="retryWrong"]').disabled,'no wrong questions left to retry (latest attempts are right)');
 click($('[data-act="selMode"]'));ok($('#selHint')&&!$('#selBar')&&$$('[data-act="selCell"]').length===3,'range mode on');
-click($$('[data-act="selCell"]')[0]);ok(/1문제 선택 · 틀린 문제 1개/.test($('#selBar').textContent)&&$$('.oc.sel').length===1,'one cell selected');
-click($$('[data-act="selCell"]')[2]);ok(/2문제 선택 · 틀린 문제 0개/.test($('#selBar').textContent)&&$$('.oc.sel').length===3&&$('[data-act="selWrong"]').disabled,'range of three; a later right answer clears the wrong one');
+click($$('[data-act="selCell"]')[0]);ok(/1문제 선택틀린 문제 1개/.test($('#selBar').textContent)&&$$('.oc.sel').length===1,'one cell selected');
+click($$('[data-act="selCell"]')[2]);ok(/2문제 선택틀린 문제 0개/.test($('#selBar').textContent)&&$$('.oc.sel').length===3&&$('[data-act="selWrong"]').disabled,'range of three; a later right answer clears the wrong one');
 click($('[data-act="selAll"]'));ok(w.__app.sess()&&w.__app.sess().ids.length===2&&w.__app.sess().ids[0]===firstId&&w.__app.sess().title==='다시 풀기','solve the whole range again');
 click($('[data-act="quit"]'));w.location.hash='records';await wait(30);
 ok(!$('#selBar')&&$$('[data-act="peek"]').length===3,'range mode ends after starting');
@@ -112,5 +112,6 @@ q=q0(w.__app.sess().ids[0]);click($$('[data-act="pick"]')[(q.ans+1)%4]);click($(
 ok($('.score')&&$$('[data-act="peekw"]').length===1,'result lists the wrong question');
 click($('[data-act="peekw"]'));ok(w.__app.sess().peek&&$('.opt.wrong')&&$('.opt.right')&&/결과로/.test($('.foot [data-act="quit"]').textContent),'wrong question opens with my answer and the explanation');
 click($('.foot [data-act="quit"]'));ok($('.score')&&w.__app.sess().done,'and returns to the result');
+for(const v of ['home','review','records','tutor']){w.location.hash=v;await wait(30);const c=$('#app').cloneNode(true);c.querySelectorAll('.stem,.passage,.opt,.msg,.item,.chip-w,.exam .unit,.exam p.body,.steps,mark').forEach(x=>x.remove());ok(!/·/.test(c.textContent),'no middle dot joins in '+v);}
 ok(errors.length===0,'no script errors '+errors.join('|'));
 })().catch(e=>{console.log('FAIL exception',e);process.exitCode=1;});
