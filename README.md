@@ -4,7 +4,7 @@
 
 - 과목: 간호관리, 지역사회간호, 국어, 영어, 한국사
 - 기본 문제 1,000개(과목마다 200개)와 실제 기출 15회분 300문항, 정답과 해설은 AI 없이 동작한다
-- AI 강사(소크라테스식 문답), 문제 생성: Claude 아티팩트에서는 바로 동작한다. GitHub Pages에서는 강사 화면의 안내를 따라 Google Gemini, Claude, OpenAI 중 하나의 API 키를 넣으면 동작한다
+- AI 강사(소크라테스식 문답), 문제 생성: Claude 아티팩트에서는 바로 동작한다. GitHub Pages에서는 AI 강사 탭의 안내를 따라 Google Gemini, Claude, OpenAI 중 하나의 API 키를 넣으면 동작한다
 - 음성 입력과 읽어 주기: GitHub Pages에서는 브라우저 내장 음성 기능을 쓴다(크롬, 사파리)
 
 ## 실행
