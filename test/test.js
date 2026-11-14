@@ -73,7 +73,8 @@ q=q0(firstId);click($$('[data-act="pick"]')[q.ans]);click($('[data-act="grade"]'
 p=st().prog[firstId];ok(p.stage===1&&p.due===day(3),'review correct -> stage1 +3d');
 click($('[data-act="conf"][data-c="unsure"]'));p=st().prog[firstId];ok(p.stage===0&&p.due===day(1),'review unsure -> stays, +1d');
 click($('[data-act="next"]'));ok(/모두 맞혔습니다/.test($('h1').textContent)&&$('.score'),'done screen');
-click($('[data-act="tab"][data-v="home"]'));w.location.hash='quiz';await wait(30);
+ok($('#nav').className==='hide'&&$('#doneFoot .btn:not(.quiet)').textContent==='복습으로'&&!$('[data-act="redo"]'),'result: nothing wrong, main button goes back to where it started');
+click($('#doneFoot .btn'));ok(!w.__app.sess()&&$('h1').textContent==='복습','back to review');w.location.hash='quiz';await wait(30);
 ok($('#addBox')&&$('[data-act="gen"]')&&$$('.rows [data-act="subj"]').length===5,'picker');
 ok(new RegExp('전체'+(B.length+st().custom.length).toLocaleString('ko-KR')).test($('#planNote').textContent)&&/안 푼 문제[\d,]+완료까지\d+일/.test($('#planNote').textContent)&&$('#planNote').textContent.length<40,'question counts live on the subject screen');
 await wait(1700);ok(calls.set.includes('data/users/u_1/state')&&calls.set.includes('data/users/u_1/log')&&calls.set.some(x=>x.startsWith('data/users/u_1/state/chats/c')),'db saved state, log, chat');
@@ -110,8 +111,13 @@ click($('[data-act="ctxClear"]'));ok(!$('#ctxBox'),'question can be put away');
 w.location.hash='records';await wait(30);click($$('[data-act="peek"]')[0]);click($('[data-act="retry"]'));
 q=q0(w.__app.sess().ids[0]);click($$('[data-act="pick"]')[(q.ans+1)%4]);click($('[data-act="grade"]'));click($('[data-act="next"]'));
 ok($('.score')&&$$('[data-act="peekw"]').length===1,'result lists the wrong question');
+ok($('#doneFoot .btn:not(.quiet)').textContent==='틀린 1문제 다시 풀기'&&$('#doneFoot .btn.quiet').textContent==='기록으로','result: main button is to solve the wrong ones again');
 click($('[data-act="peekw"]'));ok(w.__app.sess().peek&&$('.opt.wrong')&&$('.opt.right')&&/결과로/.test($('.foot [data-act="quit"]').textContent),'wrong question opens with my answer and the explanation');
 click($('.foot [data-act="quit"]'));ok($('.score')&&w.__app.sess().done,'and returns to the result');
+click($('[data-act="redo"]'));s=w.__app.sess();ok(s.ids.join()===q.id&&s.redo&&s.flow==='rec'&&$('.exam .kind').textContent==='다시 풀기','only the wrong question comes again');
+click($$('[data-act="pick"]')[q.ans]);click($('[data-act="grade"]'));p=st().prog[q.id];ok(p.stage===0&&p.due===day(1)&&/복습 일정 유지/.test($('.foot').textContent),'solving it again right away keeps the review for tomorrow');
+click($('[data-act="next"]'));ok($('h1').textContent==='모두 맞혔습니다'&&!$('[data-act="redo"]')&&$('#doneFoot .btn:not(.quiet)').textContent==='기록으로','after the wrong ones are cleared, the main button leads back');
+click($('#doneFoot .btn'));ok(!w.__app.sess()&&$('h1').textContent==='기록','back to records after the loop');
 for(const v of ['home','review','records','tutor']){w.location.hash=v;await wait(30);const c=$('#app').cloneNode(true);c.querySelectorAll('.stem,.passage,.opt,.msg,.item,.chip-w,.exam .unit,.exam p.body,.steps,mark').forEach(x=>x.remove());ok(!/·/.test(c.textContent),'no middle dot joins in '+v);}
 ok(errors.length===0,'no script errors '+errors.join('|'));
 })().catch(e=>{console.log('FAIL exception',e);process.exitCode=1;});
