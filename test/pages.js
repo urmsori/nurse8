@@ -123,7 +123,7 @@ ok(w.__app.state().custom.length===25&&reqs.length===n+4&&new Set(w.__app.state(
 flags.hang='gen';click($('[data-act="gen"]'));await wait(30);
 ok(!$('#jobBar').hidden&&/만드는 중 0\/20/.test($('#jobBar').textContent)&&$('#jobNote')&&!$('[data-act="gen"]')&&$$('[data-act="jobCancel"]').length===2,'job bar and note while generating');
 w.location.hash='home';await wait(30);
-ok($('h1').textContent==='오늘'&&!$('#jobBar').hidden,'job bar stays on other screens');
+ok($('h1').textContent==='오늘의 학습'&&!$('#jobBar').hidden,'job bar stays on other screens');
 w.location.hash='tutor';await wait(30);await ask('만드는 동안 질문');
 ok(/강사의 답입니다/.test($$('.msg.a').pop().textContent)&&!$('#jobBar').hidden,'tutor answers while generating');
 click($('#jobBar [data-act="jobCancel"]'));await wait(30);
@@ -161,7 +161,7 @@ flags.mode='quota';await ask('또');
 ok(/한도를 넘었습니다/.test($$('.msg.n').pop().textContent)&&conn(),'Gemini quota message, key kept');
 flags.mode='ok';
 w.location.hash='records';await wait(30);
-ok(/Google Gemini에 연결/.test(d.body.textContent)&&/gemini-3\.10-flash/.test(d.body.textContent),'records shows connection');
+ok(/Google Gemini 연결됨/.test(d.body.textContent)&&/gemini-3\.10-flash/.test(d.body.textContent),'records shows connection');
 click($('[data-act="forgetKey"]'));ok(!conn()&&!$('[data-act="forgetKey"]'),'disconnect');
 // OpenAI
 w.location.hash='tutor';await wait(30);
@@ -187,7 +187,7 @@ ok(reqs2.length===1&&reqs2[0].body.model==='claude-opus-5-5'&&flags2.errors.leng
 const today=(()=>{const x=new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');})();
 const w3=makeDom([],{mode:'ok',errors:[]},[],x=>x.localStorage.setItem('nurse8-state-v1',JSON.stringify({v:1,goal:10,newDay:{d:today,n:10},days:{[today]:10},prog:{},custom:[],updatedAt:1}))).window;await wait(50);
 const d3=w3.document;
-ok(w3.__app.state().goal===10&&d3.querySelector('#goalDone')&&!d3.querySelector('.big')&&/한 세트 더/.test(d3.querySelector('[data-act="today"]').textContent),'goal met: done message and one-more-set button');
+ok(w3.__app.state().goal===10&&d3.querySelector('#goalDone')&&!d3.querySelector('.big')&&/10문제 더 풀기/.test(d3.querySelector('[data-act="today"]').textContent),'goal met: done message and one-more-set button');
 d3.querySelector('[data-act="today"]').dispatchEvent(new w3.MouseEvent('click',{bubbles:true}));
 ok(w3.__app.sess()&&w3.__app.sess().ids.length===10,'extra set after goal has 10 questions');
 // 어제의 기록은 오늘 목표에 들어가지 않는다
@@ -199,9 +199,9 @@ const prog={};w5.BANK.forEach(q=>{prog[q.id]={stage:-1,due:null,seen:1,wrong:0,l
 w5.localStorage.setItem('nurse8-state-v1',JSON.stringify({v:1,goal:20,prog,custom:[],updatedAt:Date.now()}));
 const w6=makeDom([],{mode:'ok',errors:[]},[],x=>x.localStorage.setItem('nurse8-state-v1',w5.localStorage.getItem('nurse8-state-v1'))).window;await wait(50);
 const d6=w6.document;
-ok(d6.querySelector('#moreQ')&&d6.querySelector('[data-act="addQ"]')&&/한 세트 더/.test(d6.querySelector('[data-act="today"]').textContent),'all solved: home suggests making new questions, extra set still available');
+ok(d6.querySelector('#moreQ')&&d6.querySelector('[data-act="addQ"]')&&/10문제 더 풀기/.test(d6.querySelector('[data-act="today"]').textContent),'all solved: home suggests making new questions, extra set still available');
 d6.querySelector('[data-act="addQ"]').dispatchEvent(new w6.MouseEvent('click',{bubbles:true}));
-ok(d6.querySelector('h1').textContent==='과목'&&d6.querySelector('#addBox').hasAttribute('open')&&/새 문제를 만들 수 있습니다/.test(d6.querySelector('#planNote').textContent),'goes to the add-questions box, opened');
+ok(d6.querySelector('h1').textContent==='문제풀이'&&d6.querySelector('#addBox').hasAttribute('open')&&/안 푼 문제0완료까지-/.test(d6.querySelector('#planNote').textContent),'goes to the add-questions box, opened');
 // 공부할 과목 고르기: 한 과목만, 또는 몇 과목만
 const w7=makeDom([],{mode:'ok',errors:[]},[],x=>x.localStorage.setItem('nurse8-state-v1',JSON.stringify({v:1,subjects:['국어','영어','없는과목'],prog:{},custom:[],updatedAt:1}))).window;await wait(50);
 const d7=w7.document,q7=s=>d7.querySelector(s),c7=el=>el.dispatchEvent(new w7.MouseEvent('click',{bubbles:true}));
@@ -220,7 +220,7 @@ ok(!q7('#dlg').hasAttribute('open')&&w7.__app.state().subjects.join()==='한국�
 c7(q7('[data-act="today"]'));
 ok(w7.__app.sess().ids.every(id=>/^h/.test(id)),'today set is all 한국사');
 c7(q7('[data-act="quit"]'));w7.location.hash='quiz';await wait(30);
-ok(/고른 과목 섞어 풀기/.test(q7('[data-act="mixall"]').textContent)&&/고른 과목\(한국사\) 기준/.test(q7('#planNote').textContent)&&d7.querySelectorAll('.rows [data-act="subj"]').length===5,'subject screen: mix label, note, all subjects still listed');
+ok(/선택 과목 랜덤 풀기/.test(q7('[data-act="mixall"]').textContent)&&/전체200안 푼/.test(q7('#planNote').textContent)&&/한국사/.test(q7('#planNote').closest('.sheet').querySelector('.sh').textContent)&&d7.querySelectorAll('.rows [data-act="subj"]').length===5,'subject screen: mix label, note, all subjects still listed');
 c7(q7('[data-act="subj"][data-s="영어"]'));
 ok(w7.__app.sess().ids.every(id=>/^e/.test(id)),'an unselected subject can still be opened directly');
 // 기출 모음: 과목 화면에서 회분을 골라 시험지 순서대로 푼다
