@@ -218,19 +218,21 @@ ok(w7.__app.state().subjects.join()==='한국사'&&JSON.parse(w7.localStorage.ge
 c7(q7('[data-act="today"]'));
 ok(w7.__app.sess().ids.every(id=>/^h/.test(id)),'today set is all 한국사');
 c7(q7('[data-act="quit"]'));w7.location.hash='quiz';await wait(30);
-ok(/선택 과목 랜덤 풀기/.test(q7('[data-act="mixall"]').textContent)&&/전체200안 푼/.test(q7('#planNote').textContent)&&/한국사/.test(q7('#planNote').closest('.sheet').querySelector('.sh').textContent)&&d7.querySelectorAll('.rows [data-act="subj"]').length===5,'subject screen: mix label, note, all subjects still listed');
-c7(q7('[data-act="subj"][data-s="영어"]'));
-ok(w7.__app.sess().ids.every(id=>/^e/.test(id)),'an unselected subject can still be opened directly');
+ok([...d7.querySelectorAll('[data-act="xSubj"][aria-pressed="true"]')].map(x=>x.textContent).join()==='한국사'&&/전체200안 푼/.test(q7('#planNote').textContent)&&/한국사/.test(q7('#planNote').closest('.sheet').querySelector('.sh').textContent)&&d7.querySelectorAll('#subjProg > div').length===5,'question screen starts from the subjects chosen on home; progress lists all subjects');
+c7(q7('[data-act="xSubj"][data-s="영어"]'));c7(q7('[data-act="xSubj"][data-s="한국사"]'));c7(q7('[data-act="xStart"]'));
+ok(w7.__app.sess().ids.length===10&&w7.__app.sess().ids.every(id=>/^e/.test(id))&&w7.__app.state().subjects.join()==='한국사','another subject can be picked here without changing the home choice');
 // 기출 모음: 과목 화면에서 회분을 골라 시험지 순서대로 푼다
 const w8=makeDom([],{mode:'ok',errors:[]},[]).window;await wait(50);
 const d8=w8.document,q8=s=>d8.querySelector(s),c8=el=>el.dispatchEvent(new w8.MouseEvent('click',{bubbles:true}));
 const P8=w8.PAST,nPaper=new Set(P8.map(q=>q.paper)).size;
 ok(P8.length>0&&P8.length===nPaper*20&&P8.every(q=>q.past&&/기출 \d+번$/.test(q.src)),'past papers are bundled: '+nPaper+' papers');
-ok(q8('.big').textContent==='20문제'&&!q8('#pastBox')&&!/기출/.test(q8('#app').textContent),'past questions do not show on home');
+ok(q8('.big').textContent==='20문제'&&!q8('#pickBox')&&!/기출/.test(q8('#app').textContent),'past questions do not show on home');
 c8(q8('[data-act="today"]'));ok(w8.__app.sess().ids.every(id=>!/^p/.test(id)),'today set has no past-exam questions');
 c8(q8('[data-act="quit"]'));w8.location.hash='quiz';await wait(30);
-ok(q8('#pastBox')&&d8.querySelectorAll('[data-act="paper"]').length===nPaper,'past box lists every paper');
-const first=d8.querySelector('[data-act="paper"]'),key=first.dataset.p;c8(first);
+c8(q8('[data-act="pSrc"][data-v="past"]'));
+ok(q8('#pYear')&&d8.querySelectorAll('#pYear option').length===new Set(P8.map(q=>q.paper.slice(0,4))).size,'past exams: every year can be chosen');
+['국어','영어','한국사','지역사회간호'].forEach(x=>c8(q8('[data-act="xSubj"][data-s="'+x+'"]')));c8(q8('[data-act="pMode"][data-v="exam"]'));
+const key=q8('#pYear').value+'-m';c8(q8('[data-act="xStart"]'));
 let s8=w8.__app.sess();const want=P8.filter(q=>q.paper===key).map(q=>q.id);
 ok(s8.exam&&s8.ids.length===20&&s8.ids.join()===want.join()&&/기출 1번/.test(q8('.kind').textContent)&&/^2[12]:\d\d$/.test(q8('#examClock').textContent),'paper opens as a timed exam: 20 questions in order, 22 minutes');
 const q81=P8.find(q=>q.id===s8.ids[0]);c8(d8.querySelectorAll('[data-act="xpick"]')[(q81.ans+1)%4]);
@@ -239,6 +241,6 @@ c8(d8.querySelectorAll('[data-act="xgo"]')[19]);c8(q8('[data-act="xsubmit"]'));c
 ok(w8.__app.sess().done&&w8.__app.state().prog[q81.id].wrong===1&&w8.__app.state().newDay===null,'graded with official answers at the end; does not use up the daily new-question goal');
 c8(d8.querySelector('[data-act="peekw"]'));ok(/공식 정답/.test(d8.querySelectorAll('.sheet.exam .sh')[1].textContent),'explanation is marked as official answer with AI commentary');
 c8(q8('.foot [data-act="quit"]'));c8(q8('.qtop [data-act="tab"]'));
-w8.__app.state().prog[q81.id].due='2020-01-01';w8.location.hash='review';await wait(30);
-ok(d8.querySelector('[data-act="one"][data-id="'+q81.id+'"]'),'a wrong past question comes back in review');
+w8.__app.state().prog[q81.id].due='2020-01-01';w8.location.hash='home';await wait(30);
+ok(w8.__app.state().prog[q81.id].stage===0&&!q8('#navDue').hidden&&/복습 \d+/.test(q8('.legend').textContent),'a wrong past question comes back in review on home');
 })().catch(e=>{console.log('FAIL [pages] exception',e);process.exitCode=1;});
