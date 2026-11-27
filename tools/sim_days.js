@@ -158,7 +158,7 @@ function hitCheck() {
     if (d < 3 || d === 7) trace.push('── ' + (d + 1) + '일째 ──\n' + steps.join('\n'));
     prevWrong = [...wrongToday];
     // 다른 화면도 가끔 눌러 본다
-    if (d === 1 || d === 8) for (const v of ['quiz', 'review', 'records']) { await page.goto(file + '#' + v); await page.waitForTimeout(40); await check({quiz: '문제풀이', review: '복습', records: '기록'}[v]); }
+    if (d === 1 || d === 8) for (const v of ['quiz', 'records']) { await page.goto(file + '#' + v); await page.waitForTimeout(40); await check({quiz: '문제풀이', records: '기록'}[v]); }
   }
   const p = await prog();
   const stages = [0, 0, 0, 0, 0]; Object.values(p).forEach(x => { if (x.stage >= 0) stages[x.stage]++; });

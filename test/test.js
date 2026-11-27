@@ -66,17 +66,18 @@ ok($('.big').textContent==='19문제'&&st().newDay.n===2,'remaining today: 1 rev
 click($('[data-act="exam"]'));ok($('#dlg').hasAttribute('open')&&$('#examIn')&&!$('#goalIn')&&!$('#subjIn'),'the dialog only asks the exam date');click($('[data-act="dlgClose"]'));
 ok($$('[data-act="hGoal"]').length===4,'four goal chips on home');click($('[data-act="hGoal"][data-g="5"]'));
 ok(st().goal===5&&$('.big').textContent==='4문제'&&$('[data-act="hGoal"][aria-pressed="true"]').textContent==='5개','goal 5 with one tap: 1 review + 3 new left');
-w.location.hash='review';await wait(30);
+ok($$('#nav a').length===4&&!$('#nav [data-tab="review"]')&&$('#nav [data-tab="home"] #navDue'),'four tabs; the review count sits on the home tab');
+w.location.hash='records';await wait(30);
 ok($$('.ladder b').map(x=>x.textContent).join(',')==='1,1,0,0,0','ladder '+$$('.ladder b').map(x=>x.textContent).join(','));
-click($('[data-act="review"]'));s=w.__app.sess();ok(s.ids.length===1&&s.ids[0]===firstId,'review session');
+click($('[data-act="retryWrong"]'));s=w.__app.sess();ok(s.ids.length===1&&s.ids[0]===firstId,'wrong-only session from records');
 q=q0(firstId);click($$('[data-act="pick"]')[q.ans]);click($('[data-act="grade"]'));
 p=st().prog[firstId];ok(p.stage===1&&p.due===day(3),'review correct -> stage1 +3d');
 click($('[data-act="conf"][data-c="unsure"]'));p=st().prog[firstId];ok(p.stage===0&&p.due===day(1),'review unsure -> stays, +1d');
 click($('[data-act="next"]'));ok(/모두 맞혔습니다/.test($('h1').textContent)&&$('.score'),'done screen');
-ok($('#nav').className==='hide'&&$('#doneFoot .btn:not(.quiet)').textContent==='복습으로'&&!$('[data-act="redo"]'),'result: nothing wrong, main button goes back to where it started');
-click($('#doneFoot .btn'));ok(!w.__app.sess()&&$('h1').textContent==='복습','back to review');w.location.hash='quiz';await wait(30);
-ok($('#addBox')&&$('[data-act="gen"]')&&$$('.rows [data-act="subj"]').length===5,'picker');
-ok(new RegExp('전체'+(B.length+st().custom.length).toLocaleString('ko-KR')).test($('#planNote').textContent)&&/안 푼 문제[\d,]+완료까지\d+일/.test($('#planNote').textContent)&&$('#planNote').textContent.length<40,'question counts live on the subject screen');
+ok($('#nav').className==='hide'&&$('#doneFoot .btn:not(.quiet)').textContent==='기록으로'&&!$('[data-act="redo"]'),'result: nothing wrong, main button goes back to where it started');
+click($('#doneFoot .btn'));ok(!w.__app.sess()&&$('h1').textContent==='기록','back to records');w.location.hash='quiz';await wait(30);
+ok($('#addBox')&&$('[data-act="gen"]')&&$$('#subjProg > div').length===5&&$$('#app [data-act="xStart"]').length===1,'question screen: one place to start, progress per subject');
+ok(new RegExp('전체'+(B.length+st().custom.length).toLocaleString('ko-KR')).test($('#planNote').textContent)&&/안 푼 문제[\d,]+완료까지\d+일/.test($('#planNote').textContent)&&$('#planNote .tbl').textContent.length<40,'question counts live on the subject screen');
 await wait(1700);ok(calls.set.includes('data/users/u_1/state')&&calls.set.includes('data/users/u_1/log')&&calls.set.some(x=>x.startsWith('data/users/u_1/state/chats/c')),'db saved state, log, chat');
 const L=w.__app.log();ok(L.length===3&&L[0][3]===0&&L[1][4]==='u'&&L[2][3]===1,'log has 3 attempts with result and confidence '+JSON.stringify(L.map(e=>e.slice(2))));
 ok(w.__app.chats().length===1&&w.__app.chats()[0].msgs.length===4&&w.__app.chats()[0].title==='더 쉽게 설명해 주세요','chat saved with title');
@@ -118,11 +119,15 @@ click($('[data-act="redo"]'));s=w.__app.sess();ok(s.ids.join()===q.id&&s.redo&&s
 click($$('[data-act="pick"]')[q.ans]);click($('[data-act="grade"]'));p=st().prog[q.id];ok(p.stage===0&&p.due===day(1)&&/복습 일정 유지/.test($('.foot').textContent),'solving it again right away keeps the review for tomorrow');
 click($('[data-act="next"]'));ok($('h1').textContent==='모두 맞혔습니다'&&!$('[data-act="redo"]')&&$('#doneFoot .btn:not(.quiet)').textContent==='기록으로','after the wrong ones are cleared, the main button leads back');
 click($('#doneFoot .btn'));ok(!w.__app.sess()&&$('h1').textContent==='기록','back to records after the loop');
-for(const v of ['home','review','records','tutor']){w.location.hash=v;await wait(30);const c=$('#app').cloneNode(true);c.querySelectorAll('.stem,.passage,.opt,.msg,.item,.chip-w,.exam .unit,.exam p.body,.steps,mark').forEach(x=>x.remove());ok(!/·/.test(c.textContent),'no middle dot joins in '+v);}
+for(const v of ['home','records','tutor']){w.location.hash=v;await wait(30);const c=$('#app').cloneNode(true);c.querySelectorAll('.stem,.passage,.opt,.msg,.item,.chip-w,.exam .unit,.exam p.body,.steps,mark').forEach(x=>x.remove());ok(!/·/.test(c.textContent),'no middle dot joins in '+v);}
 w.location.hash='quiz';await wait(30);
-ok($('#mockBox')&&$$('[data-act="xSubj"][aria-pressed="true"]').length===5&&/100문항110분/.test($('#mockBox').closest('.sheet').querySelector('.sh').textContent),'mock exam: 5 subjects, 100 questions, 110 minutes');
+ok($('#pickBox')&&$$('[data-act="xSubj"][aria-pressed="true"]').length===5&&/^풀 문제10문항$/.test($('#pickBox').closest('.sheet').querySelector('.sh').textContent)&&$('[data-act="pSrc"][data-v="base"]').getAttribute('aria-pressed')==='true'&&$('[data-act="pMode"][data-v="drill"]').getAttribute('aria-pressed')==='true','picker starts as practice: base questions, 10 at a time');
+click($('[data-act="xStart"]'));s=w.__app.sess();ok(!s.exam&&s.ids.length===10&&s.flow==='pick'&&$('[data-act="grade"]'),'practice: graded one by one');
+click($('[data-act="quit"]'));ok(!w.__app.sess()&&$('h1').textContent==='문제풀이','leaving goes back to the question screen');
+click($('[data-act="pSrc"][data-v="past"]'));ok($('#pYear')&&$$('#pYear option').length>=2&&/100문항/.test($('#pickBox').closest('.sheet').querySelector('.sh').textContent),'past exams: pick a year');click($('[data-act="pSrc"][data-v="base"]'));
+click($('[data-act="pMode"][data-v="exam"]'));ok(/100문항110분/.test($('#pickBox').closest('.sheet').querySelector('.sh').textContent),'exam mode: 5 subjects, 100 questions, 110 minutes');
 ['국어','영어','한국사','지역사회간호'].forEach(x=>click($('[data-act="xSubj"][data-s="'+x+'"]')));
-ok(/20문항22분/.test($('#mockBox').closest('.sheet').querySelector('.sh').textContent),'one subject: 20 questions, 22 minutes');
+ok(/20문항22분/.test($('#pickBox').closest('.sheet').querySelector('.sh').textContent),'one subject: 20 questions, 22 minutes');
 click($('[data-act="xSubj"][data-s="간호관리"]'));ok($$('[data-act="xSubj"][aria-pressed="true"]').length===1&&/하나 이상/.test($('#toast').textContent),'at least one subject stays selected');
 const logN=w.__app.log().length;click($('[data-act="xStart"]'));s=w.__app.sess();
 ok(s.exam&&s.ids.length===20&&s.ids.every(id=>/^m/.test(id))&&/^2[12]:\d\d$/.test($('#examClock').textContent)&&!$('[data-act="grade"]')&&$$('#omrBox .oc').length===20,'exam mode: 20 questions, a clock, an answer sheet, no grading per question');
@@ -135,5 +140,10 @@ ok(s.done&&s.right===1&&$('.score').textContent.replace(/\s/g,'')==='1/20'&&w.__
 p=st().prog[x1.id];ok(p.stage===0&&p.due===day(1)&&/틀린 19문제 다시 풀기/.test($('#doneFoot .btn').textContent),'wrong exam answers go to review and the main button is to solve them again');
 click($$('[data-act="peekw"]')[1]);ok(/안 푼 문제/.test($('.foot').textContent)&&$('.opt.right')&&!$('.opt.wrong'),'a blank shows as not answered');click($('.foot [data-act="quit"]'));
 click($('.qtop [data-act="tab"]'));ok(!w.__app.sess()&&$('h1').textContent==='문제풀이','back to the question screen');
+w.location.hash='records';await wait(30);click($('[data-act="resetAsk"]'));ok($('#rstDlg').hasAttribute('open')&&w.__app.log().length>0,'reset asks first');
+click($('[data-act="resetNo"]'));ok(!$('#rstDlg').hasAttribute('open')&&w.__app.log().length>0,'cancel keeps everything');
+click($('[data-act="resetAsk"]'));click($('[data-act="resetYes"]'));
+ok(w.__app.log().length===0&&Object.keys(st().prog).length===0&&st().custom.length===0&&w.__app.chats().length===0&&$('h1').textContent==='오늘의 학습'&&$('.big').textContent==='20문제'&&$('#navDue').hidden,'reset clears progress, log, chats and added questions');
+ok(JSON.parse(w.localStorage.getItem('nurse8-log-v1')).length===0&&Object.keys(JSON.parse(w.localStorage.getItem('nurse8-state-v1')).prog).length===0,'reset is saved');
 ok(errors.length===0,'no script errors '+errors.join('|'));
 })().catch(e=>{console.log('FAIL exception',e);process.exitCode=1;});

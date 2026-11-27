@@ -90,17 +90,18 @@ function probe(dyn) {
     await check('done');
     if (await p.$('[data-act="peekw"]')) { await p.click('[data-act="peekw"]'); await check('peekw'); await p.click('.foot [data-act="quit"]'); }
     await p.click('[data-act="tab"][data-v="home"]'); await check('home2');
-    await nav('quiz'); await p.click('#pastBox summary'); await p.click('#addBox summary'); await check('picker');
-    // 실전 방식: 시험 화면, 답안지, 제출 확인 창, 결과
+    await nav('quiz'); await p.click('#addBox summary'); await check('picker');
+    await p.click('[data-act="pSrc"][data-v="past"]'); await check('pickerPast');
+    await p.click('[data-act="pSrc"][data-v="base"]'); await p.click('[data-act="pMode"][data-v="exam"]'); await check('pickerExam');
+    // 실전 방식: 시험 화면, 답안지, 그만두기 창, 제출 확인 창, 결과
     await p.click('[data-act="xStart"]'); await check('exam');
     await (await p.$$('[data-act="xpick"]'))[1].click(); await p.click('[data-act="xnext"]'); await check('exam2');
+    await p.click('[data-act="quit"]'); await check('examQuit'); await p.click('[data-act="quitNo"]');
     await p.evaluate(() => { const c = document.querySelectorAll('[data-act="xgo"]'); c[c.length - 1].click(); });
     await p.click('[data-act="xsubmit"]'); await check('submitDlg'); await p.click('[data-act="xsubYes"]'); await check('examDone');
     await p.click('.qtop [data-act="tab"]');
-    if (!(await p.$('#pastBox[open]'))) await p.click('#pastBox summary');
-    await p.click('[data-act="paper"]'); await check('paper'); await p.click('[data-act="quit"]'); await check('examQuit'); await p.click('[data-act="quitYes"]');
-    await nav('review'); await check('review');
     await nav('records'); await check('records');
+    await p.click('[data-act="resetAsk"]'); await check('resetDlg'); await p.click('[data-act="resetNo"]');
     await p.click('[data-act="selMode"]'); await check('sel0');
     let cells = await p.$$('[data-act="selCell"]:not([disabled])'); await cells[2].click(); cells = await p.$$('[data-act="selCell"]:not([disabled])'); await cells[9].click(); await check('sel1');
     await p.click('#selBar [data-act="selMode"]'); await p.click('[data-act="recList"]'); await check('reclist');
